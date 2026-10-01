@@ -1,0 +1,388 @@
+/*
+ * @Descripttion: 
+ * @version: 
+ * @Author: congsir
+ * @Date: 2022-05-27 00:22:38
+ * @LastEditors: Please set LastEditors
+ * @LastEditTime: 2022-09-11 13:07:45
+ */
+
+#include "user_app/super_knob_user_api.h"
+
+
+//图片初始化
+LV_IMG_DECLARE(lamp_img);
+LV_IMG_DECLARE(leds_img);
+LV_IMG_DECLARE(socket_img);
+LV_IMG_DECLARE(computer_img);
+LV_IMG_DECLARE(air_cond_img);
+LV_IMG_DECLARE(sensor_img);
+LV_IMG_DECLARE(fan_img);
+LV_IMG_DECLARE(tomato_img);
+LV_IMG_DECLARE(code_img);
+LV_IMG_DECLARE(about_img);
+LV_IMG_DECLARE(pc_cpu_img);
+LV_IMG_DECLARE(angle_img);
+LV_IMG_DECLARE(setting_img);
+LV_IMG_DECLARE(kunkun_img);
+LV_IMG_DECLARE(one_step_img);
+
+static void scroll_event_cb(lv_event_t *e)
+{
+    lv_obj_t *cont = lv_event_get_target(e);
+
+    lv_area_t cont_a;
+    lv_obj_get_coords(cont, &cont_a);
+    lv_coord_t cont_y_center = cont_a.y1 + lv_area_get_height(&cont_a) / 2;
+
+    lv_coord_t r = lv_obj_get_height(cont) * 7 / 10;
+    uint32_t i;
+    uint32_t child_cnt = lv_obj_get_child_cnt(cont);
+    for (i = 0; i < child_cnt; i++)
+    {
+        lv_obj_t *child = lv_obj_get_child(cont, i);
+        lv_area_t child_a;
+        lv_obj_get_coords(child, &child_a);
+
+        lv_coord_t child_y_center = child_a.y1 + lv_area_get_height(&child_a) / 2;
+
+        lv_coord_t diff_y = child_y_center - cont_y_center;
+        diff_y = LV_ABS(diff_y);
+
+        /*Get the x of diff_y on a circle.*/
+        lv_coord_t x;
+        /*If diff_y is out of the circle use the last point of the circle (the radius)*/
+        if (diff_y >= r)
+        {
+            x = r;
+        }
+        else
+        {
+            /*Use Pythagoras theorem to get x from radius and y*/
+            uint32_t x_sqr = r * r - diff_y * diff_y;
+            lv_sqrt_res_t res;
+            lv_sqrt(x_sqr, &res, 0x8000); /*Use lvgl's built in sqrt root function*/
+            x = r - res.i;
+        }
+
+        /*Translate the item by the calculated X coordinate*/
+        lv_obj_set_style_translate_x(child, x, 0);
+
+        /*Use some opacity with larger translations*/
+        lv_opa_t opa = lv_map(x, 0, r, LV_OPA_TRANSP, LV_OPA_COVER);
+        lv_obj_set_style_opa(child, LV_OPA_COVER - opa, 0);
+    }
+}
+
+void lv_set_scroll_box(lv_obj_t* background_btn, void* image_src, const char * text_buff)
+{
+    /* style */
+    static lv_style_t style_btn;
+    lv_style_init(&style_btn);
+    lv_style_set_bg_opa(&style_btn, 0); //设置背景透明
+    lv_style_set_radius(&style_btn, 15);
+
+    static lv_style_t style_text;
+    lv_style_init(&style_text);
+    lv_style_set_text_opa(&style_text, 255);
+    lv_style_set_text_color(&style_text, lv_color_black());
+
+    //lv_obj_t* normal_obj = lv_btn_create(cont);
+    lv_obj_set_width(background_btn, lv_pct(100));
+    lv_obj_set_height(background_btn, 120);
+    lv_obj_add_style(background_btn, &style_btn, LV_PART_MAIN);
+
+    // lv_obj_t* line1 = lv_line_create(background_btn);
+    // static lv_point_t line_points[] = { {70, 5}, {70, 70} };
+    // lv_line_set_points(line1, line_points, 2);
+
+    lv_obj_t *img1 = lv_img_create(background_btn);
+    lv_img_set_src(img1, image_src);
+    lv_obj_align(img1, LV_ALIGN_TOP_MID, 0, 6);
+
+    // lv_obj_t* line2 = lv_line_create(background_btn);
+    // static lv_point_t line_points_2[] = { {80, 40}, {180, 40} };
+    // lv_line_set_points(line2, line_points_2, 2);
+
+    lv_obj_t* label = lv_label_create(background_btn);
+    lv_label_set_long_mode(label, LV_LABEL_LONG_SCROLL_CIRCULAR);     /*Circular scroll*/
+    lv_obj_set_width(label, 40);
+    LV_FONT_DECLARE(lv_font_chinese_source_20); //加载中文字体
+    lv_obj_set_style_text_font(label, &lv_font_chinese_source_20, 0);
+    lv_label_set_text(label, text_buff);
+    lv_obj_add_style(label, &style_text, 0);
+    lv_obj_align(label, LV_ALIGN_BOTTOM_MID, 0, -6);
+
+}
+
+static void one_step_btn_event_handler(lv_event_t * e)
+{
+    lv_event_code_t code = lv_event_get_code(e);
+
+    if(code == LV_EVENT_CLICKED) {
+        set_super_knob_page_status(SUPER_PAGE_BUSY);
+        setup_scr_screen_one_step(&super_knob_ui);
+        lv_scr_load_anim(super_knob_ui.screen_one_step, LV_SCR_LOAD_ANIM_FADE_ON, 100, 10, true);
+        update_page_status(CHECKOUT_PAGE);
+    }
+    else if(code == LV_EVENT_VALUE_CHANGED) {
+        //LV_LOG_USER("Toggled");
+    }
+}
+
+static void ikun_btn_event_handler(lv_event_t * e)
+{
+    lv_event_code_t code = lv_event_get_code(e);
+
+    if(code == LV_EVENT_CLICKED) {
+        set_super_knob_page_status(SUPER_PAGE_BUSY);
+        setup_scr_screen_kunkun(&super_knob_ui);
+        lv_scr_load_anim(super_knob_ui.screen_kunkun, LV_SCR_LOAD_ANIM_FADE_ON, 100, 10, true);
+        update_motor_config(CONFIG_MPTOR_AUTO);
+        update_page_status(CHECKOUT_PAGE);
+    }
+    else if(code == LV_EVENT_VALUE_CHANGED) {
+        //LV_LOG_USER("Toggled");
+    }
+}
+
+
+static void sensor_btn_event_handler(lv_event_t * e)
+{
+    lv_event_code_t code = lv_event_get_code(e);
+
+    if(code == LV_EVENT_CLICKED) {
+        // update_page_status(CHECKOUT_PAGE);
+        // set_super_knob_page_status(SUPER_PAGE_BUSY);
+        // setup_scr_screen_iot_sensor(&super_knob_ui);
+        // lv_scr_load_anim(super_knob_ui.screen_iot_sensor, LV_SCR_LOAD_ANIM_FADE_ON, 200, 100, true);
+    }
+    else if(code == LV_EVENT_VALUE_CHANGED) {
+        //LV_LOG_USER("Toggled");
+    }
+}
+
+static void sensor_computer_event_handler(lv_event_t * e)
+{
+    lv_event_code_t code = lv_event_get_code(e);
+    if(code == LV_EVENT_CLICKED) {
+        update_page_status(CHECKOUT_PAGE);
+        set_super_knob_page_status(SUPER_PAGE_BUSY);
+        setup_scr_screen_player(&super_knob_ui);
+        lv_scr_load_anim(super_knob_ui.screen_iot_player, LV_SCR_LOAD_ANIM_FADE_ON, 200, 100, true);
+    }
+    else if(code == LV_EVENT_VALUE_CHANGED) {
+        //LV_LOG_USER("Toggled");
+    }
+
+}
+
+static void fan_btn_event_handler(lv_event_t * e)
+{
+    lv_event_code_t code = lv_event_get_code(e);
+
+    if(code == LV_EVENT_CLICKED) {
+        update_page_status(CHECKOUT_PAGE);
+        set_super_knob_page_status(SUPER_PAGE_BUSY);
+        setup_scr_screen_smart_fan(&super_knob_ui);
+        lv_scr_load_anim(super_knob_ui.screen_iot_smart_fan, LV_SCR_LOAD_ANIM_FADE_ON, 200, 100, true);
+    }
+    else if(code == LV_EVENT_VALUE_CHANGED) {
+        //LV_LOG_USER("Toggled");
+    }
+
+}
+
+static void tomato_btn_event_handler(lv_event_t * e)
+{
+    lv_event_code_t code = lv_event_get_code(e);
+
+    if(code == LV_EVENT_CLICKED) {
+        update_page_status(CHECKOUT_PAGE);
+        set_super_knob_page_status(SUPER_PAGE_BUSY);
+        setup_scr_screen_tomato_clock(&super_knob_ui);
+        lv_scr_load_anim(super_knob_ui.screen_iot_tomato_clock, LV_SCR_LOAD_ANIM_FADE_ON, 200, 100, true);
+    }
+    else if(code == LV_EVENT_VALUE_CHANGED) {
+        //LV_LOG_USER("Toggled");
+    }
+
+}
+
+static void sensor_leds_event_handler(lv_event_t * e)
+{
+    lv_event_code_t code = lv_event_get_code(e);
+
+    if(code == LV_EVENT_CLICKED) {
+        update_page_status(CHECKOUT_PAGE);
+        set_super_knob_page_status(SUPER_PAGE_BUSY);
+        update_motor_config(CONFIG_DOUBLE);
+        setup_scr_screen_light_belt(&super_knob_ui);
+        lv_scr_load_anim(super_knob_ui.screen_iot_light_belt, LV_SCR_LOAD_ANIM_FADE_ON, 200, 100, true);
+    }
+    else if(code == LV_EVENT_VALUE_CHANGED) {
+        //LV_LOG_USER("Toggled");
+    }
+
+}
+
+static void developer_btn_event_handler(lv_event_t * e)
+{
+    lv_event_code_t code = lv_event_get_code(e);
+
+    if(code == LV_EVENT_CLICKED) {
+        update_page_status(CHECKOUT_PAGE);
+        set_super_knob_page_status(SUPER_PAGE_BUSY);
+        update_motor_config(CONFIG_DOUBLE);
+        setup_scr_screen_cv_developer(&super_knob_ui);
+        lv_scr_load_anim(super_knob_ui.screen_cv_developer, LV_SCR_LOAD_ANIM_FADE_ON, 200, 100, true);
+    }
+    else if(code == LV_EVENT_VALUE_CHANGED) {
+        //LV_LOG_USER("Toggled");
+    }
+
+}
+
+static void about_btn_event_handler(lv_event_t * e)
+{
+    lv_event_code_t code = lv_event_get_code(e);
+
+    if(code == LV_EVENT_CLICKED) {
+        update_page_status(CHECKOUT_PAGE);
+        set_super_knob_page_status(SUPER_PAGE_BUSY);
+        setup_scr_screen_about(&super_knob_ui);
+        lv_scr_load_anim(super_knob_ui.screen_about, LV_SCR_LOAD_ANIM_FADE_ON, 200, 100, true);
+    }
+    else if(code == LV_EVENT_VALUE_CHANGED) {
+        //LV_LOG_USER("Toggled");
+    }
+}
+
+static void cpu_monitor_btn_event_handler(lv_event_t * e)
+{
+    lv_event_code_t code = lv_event_get_code(e);
+
+    if(code == LV_EVENT_CLICKED) {
+        update_page_status(CHECKOUT_PAGE);
+        set_super_knob_page_status(SUPER_PAGE_BUSY);
+        update_motor_config(CONFIG_MPTOR_AUTO);
+        setup_scr_screen_cpu_monitor(&super_knob_ui);
+        lv_scr_load_anim(super_knob_ui.screen_cpu_monitor, LV_SCR_LOAD_ANIM_FADE_ON, 200, 100, true);
+    }
+    else if(code == LV_EVENT_VALUE_CHANGED) {
+        //LV_LOG_USER("Toggled");
+    }
+}
+
+static void motor_angle_btn_event_handler(lv_event_t * e)
+{
+    lv_event_code_t code = lv_event_get_code(e);
+
+    if(code == LV_EVENT_CLICKED) {
+        update_page_status(CHECKOUT_PAGE);
+        set_super_knob_page_status(SUPER_PAGE_BUSY);
+        update_motor_config(CONFIG_MPTOR_AUTO);
+        setup_scr_screen_motor_angle(&super_knob_ui);
+        lv_scr_load_anim(super_knob_ui.screen_motor_angle, LV_SCR_LOAD_ANIM_FADE_ON, 200, 100, true);
+    }
+    else if(code == LV_EVENT_VALUE_CHANGED) {
+        //LV_LOG_USER("Toggled");
+    }
+}
+
+static void setting_btn_event_handler(lv_event_t * e)
+{
+    lv_event_code_t code = lv_event_get_code(e);
+
+    if(code == LV_EVENT_CLICKED) {
+        update_page_status(CHECKOUT_PAGE);
+        set_super_knob_page_status(SUPER_PAGE_BUSY);
+        setup_scr_screen_setting(&super_knob_ui);
+        lv_scr_load_anim(super_knob_ui.screen_setting, LV_SCR_LOAD_ANIM_FADE_ON, 200, 100, true);
+    }
+    else if(code == LV_EVENT_VALUE_CHANGED) {
+        //LV_LOG_USER("Toggled");
+    }
+}
+
+
+
+void setup_scr_screen_iot_main(lv_ui *ui)
+{
+    static lv_style_t style_btn;
+    lv_style_init(&style_btn);
+    lv_style_set_bg_opa(&style_btn, 0); //设置背景透明
+
+    static lv_style_t style_text;
+    lv_style_init(&style_text);
+    lv_style_set_text_opa(&style_text, 255);
+    lv_style_set_text_color(&style_text, lv_color_black());
+
+    ui->screen_iot_main_boday = lv_obj_create(NULL);
+    lv_obj_set_size(ui->screen_iot_main_boday, 90, 160);
+
+    ui->screen_iot_main = lv_obj_create(ui->screen_iot_main_boday);
+    lv_obj_set_size(ui->screen_iot_main, 90, 160);
+    lv_obj_center(ui->screen_iot_main);
+
+    lv_obj_set_scroll_snap_y(ui->screen_iot_main, LV_SCROLL_SNAP_CENTER);
+    lv_obj_set_flex_flow(ui->screen_iot_main, LV_FLEX_FLOW_COLUMN);
+
+    lv_obj_add_flag(ui->screen_iot_main, LV_OBJ_FLAG_SCROLL_ONE);
+    lv_obj_set_scrollbar_mode(ui->screen_iot_main, LV_SCROLLBAR_MODE_OFF); //从不显示滚动条
+
+    lv_obj_t* leds_btn = lv_btn_create(ui->screen_iot_main);
+    lv_obj_add_event_cb(leds_btn, sensor_leds_event_handler, LV_EVENT_ALL, NULL);
+    lv_set_scroll_box(leds_btn, (void *)&leds_img, "灯带");
+
+    lv_obj_t* fan_btn = lv_btn_create(ui->screen_iot_main);
+    lv_obj_add_event_cb(fan_btn, fan_btn_event_handler, LV_EVENT_ALL, NULL);
+    lv_set_scroll_box(fan_btn, (void *)&fan_img, "风扇");
+
+    lv_obj_t* tomato_btn = lv_btn_create(ui->screen_iot_main);
+    lv_obj_add_event_cb(tomato_btn, tomato_btn_event_handler, LV_EVENT_ALL, NULL);
+    lv_set_scroll_box(tomato_btn, (void *)&tomato_img, "番茄");
+
+    lv_obj_t* developer_btn = lv_btn_create(ui->screen_iot_main);
+    lv_obj_add_event_cb(developer_btn, developer_btn_event_handler, LV_EVENT_ALL, NULL);
+    lv_set_scroll_box(developer_btn, (void *)&code_img, "信仰");
+
+    lv_obj_t* cpu_monitor_btn = lv_btn_create(ui->screen_iot_main);
+    lv_obj_add_event_cb(cpu_monitor_btn, cpu_monitor_btn_event_handler, LV_EVENT_ALL, NULL);
+    lv_set_scroll_box(cpu_monitor_btn, (void *)&pc_cpu_img, "监测");
+
+    lv_obj_t* motor_angle_btn = lv_btn_create(ui->screen_iot_main);
+    lv_obj_add_event_cb(motor_angle_btn, motor_angle_btn_event_handler, LV_EVENT_ALL, NULL);
+    lv_set_scroll_box(motor_angle_btn, (void *)&angle_img, "纠缠");
+
+    lv_obj_t* computer_btn = lv_btn_create(ui->screen_iot_main);
+    lv_obj_add_event_cb(computer_btn, sensor_computer_event_handler, LV_EVENT_ALL, NULL);
+    lv_set_scroll_box(computer_btn, (void *)&computer_img, "电脑");
+
+    lv_obj_t* one_step_btn = lv_btn_create(ui->screen_iot_main);
+    lv_obj_add_event_cb(one_step_btn, one_step_btn_event_handler, LV_EVENT_ALL, NULL);
+    lv_set_scroll_box(one_step_btn, (void *)&one_step_img, "一步");
+
+    lv_obj_t* ikun_btn = lv_btn_create(ui->screen_iot_main);
+    lv_obj_add_event_cb(ikun_btn, ikun_btn_event_handler, LV_EVENT_ALL, NULL);
+    lv_set_scroll_box(ikun_btn, (void *)&kunkun_img, "鲲鲲");
+
+    // lv_obj_t* sensor_btn = lv_btn_create(ui->screen_iot_main);
+    // lv_obj_add_event_cb(sensor_btn, sensor_btn_event_handler, LV_EVENT_ALL, NULL);
+    // lv_set_scroll_box(sensor_btn, (void *)&sensor_img, "传感");
+
+    lv_obj_t* setting_btn = lv_btn_create(ui->screen_iot_main);
+    lv_obj_add_event_cb(setting_btn, setting_btn_event_handler, LV_EVENT_ALL, NULL);
+    lv_set_scroll_box(setting_btn, (void *)&setting_img, "设置");
+
+    lv_obj_t* about_btn = lv_btn_create(ui->screen_iot_main);
+    lv_obj_add_event_cb(about_btn, about_btn_event_handler, LV_EVENT_ALL, NULL);
+    lv_set_scroll_box(about_btn, (void *)&about_img, "关于");
+
+
+
+    lv_obj_update_snap(ui->screen_iot_main, LV_ANIM_ON);
+
+    //刷新页面调度器
+    set_super_knob_page_status(IOT_MAIN_PAGE);
+}

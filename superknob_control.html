@@ -1,0 +1,1343 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SuperKnobLite 控制台</title>
+<style>
+:root{
+  --bg:#0b0f14; --panel:#121a23; --panel2:#0e151d; --line:#1f2b38;
+  --txt:#d7e2ee; --dim:#7d8fa3; --acc:#4cc2ff; --ok:#3ddc84; --warn:#ffb74d;
+  --err:#ff5252; --mono:'SF Mono',Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--txt);font:14px/1.6 system-ui,-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;padding-bottom:280px}
+header{display:flex;align-items:center;gap:14px;padding:14px 20px;border-bottom:1px solid var(--line);background:var(--panel2);position:sticky;top:0;z-index:10}
+header h1{font-size:17px;font-weight:600;letter-spacing:.5px}
+header h1 small{color:var(--dim);font-weight:400;margin-left:8px;font-size:12px}
+.badge{padding:3px 12px;border-radius:20px;font-size:12px;border:1px solid var(--line);color:var(--dim)}
+.badge.gray{color:var(--dim)} .badge.blue{color:var(--acc);border-color:var(--acc)}
+.badge.green{color:var(--ok);border-color:var(--ok)} .badge.yellow{color:var(--warn);border-color:var(--warn)}
+.badge.red{color:var(--err);border-color:var(--err)}
+.spacer{flex:1}
+#devInfo{font:12px var(--mono);color:var(--dim)}
+.tabs{display:flex;gap:4px;padding:10px 20px 0;background:var(--panel2);position:sticky;top:53px;z-index:9}
+.tabs button{background:none;border:1px solid transparent;border-bottom:none;color:var(--dim);padding:9px 18px;font-size:14px;cursor:pointer;border-radius:8px 8px 0 0}
+.tabs button.on{background:var(--bg);color:var(--txt);border-color:var(--line)}
+main{max-width:1060px;margin:0 auto;padding:18px 20px}
+section.tab{display:none} section.tab.on{display:block}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin-bottom:14px}
+.card h2{font-size:14px;font-weight:600;margin-bottom:10px;color:var(--acc)}
+.card h2 .hint{font-weight:400;color:var(--dim);font-size:12px;margin-left:8px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+button.btn{background:#1b2735;border:1px solid #2c3e52;color:var(--txt);padding:7px 16px;border-radius:7px;cursor:pointer;font-size:13px}
+button.btn:hover:not(:disabled){border-color:var(--acc);color:var(--acc)}
+button.btn.primary{background:#0d3a5c;border-color:var(--acc);color:#fff}
+button.btn.danger{border-color:var(--err);color:var(--err)}
+button.btn:disabled{opacity:.4;cursor:not-allowed}
+input[type=number],select{background:var(--panel2);border:1px solid var(--line);color:var(--txt);padding:6px 8px;border-radius:6px;font:13px var(--mono);width:90px}
+input[type=range]{accent-color:var(--acc)}
+input[type=checkbox]{accent-color:var(--acc)}
+label.lb{color:var(--dim);font-size:13px}
+.stat{display:inline-block;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px 14px;margin:4px 6px 0 0;min-width:104px}
+.stat b{display:block;font:16px var(--mono);color:var(--txt)}
+.stat span{font-size:11px;color:var(--dim)}
+.stat.good b{color:var(--ok)} .stat.bad b{color:var(--err)} .stat.warn b{color:var(--warn)}
+.pill{display:inline-block;padding:2px 10px;border-radius:12px;font-size:12px;background:#1a2430;color:var(--dim)}
+.pill.run{color:var(--acc);border:1px solid var(--acc)} .pill.pass{color:var(--ok);border:1px solid var(--ok)}
+.pill.fail{color:var(--err);border:1px solid var(--err)} .pill.manual{color:var(--warn);border:1px solid var(--warn)}
+.logbox{background:#060a0e;border:1px solid var(--line);border-radius:8px;padding:10px;font:12px/1.5 var(--mono);height:180px;overflow-y:auto;white-space:pre-wrap;word-break:break-all}
+.logbox .t{color:#4a5b6d} .logbox .TX{color:#7fd4ff} .logbox .RX{color:#9be8b8} .logbox .SYS{color:#ffb74d} .logbox .EVT{color:#d0a8ff}
+canvas{background:#060a0e;border:1px solid var(--line);border-radius:8px;width:100%;height:120px;display:block}
+.progress{height:6px;background:var(--panel2);border-radius:3px;overflow:hidden;margin:8px 0}
+.progress i{display:block;height:100%;background:var(--acc);width:0%;transition:width .15s}
+.test{border:1px solid var(--line);border-radius:8px;padding:12px 14px;margin-bottom:10px;background:var(--panel2)}
+.test .hd{display:flex;align-items:center;gap:10px}
+.test .hd b{font-size:13.5px}
+.test .bd{color:var(--dim);font-size:12.5px;margin-top:6px}
+.test .ev{font:12px var(--mono);color:#9be8b8;margin-top:6px;white-space:pre-wrap;word-break:break-all}
+.test .act{margin-top:8px;display:flex;gap:8px;flex-wrap:wrap}
+.bigval{font:26px var(--mono);color:var(--acc)}
+details{border:1px solid var(--line);border-radius:8px;padding:10px 14px;background:var(--panel2);margin-top:14px}
+summary{cursor:pointer;color:var(--dim);font-size:13px}
+/* 屏幕相关折叠区：屏幕故障时整块收起，不干扰电机等主要功能 */
+details.fold>summary{color:var(--txt);font-size:13.5px;font-weight:600;list-style-position:inside}
+details.fold>summary::marker{color:var(--warn)}
+details.fold .card{margin-bottom:12px;padding:14px 16px}
+details.fold .notice{margin:12px 0}
+details table{border-collapse:collapse;margin-top:10px;font:12.5px var(--mono);width:100%}
+details td,details th{border:1px solid var(--line);padding:5px 10px;text-align:left;color:var(--txt)}
+details th{color:var(--acc)}
+#drawer{position:fixed;left:0;right:0;bottom:0;background:var(--panel2);border-top:1px solid var(--line);z-index:20}
+#drawer .bar{display:flex;align-items:center;gap:14px;padding:7px 20px;cursor:pointer;color:var(--dim);font-size:12.5px}
+#console{height:210px;overflow-y:auto;padding:4px 20px 12px;font:12px/1.55 var(--mono);white-space:pre-wrap;word-break:break-all}
+#console .t{color:#4a5b6d} #console .TX{color:#7fd4ff} #console .RX{color:#9be8b8} #console .SYS{color:#ffb74d} #console .EVT{color:#d0a8ff} #console .ERR{color:var(--err)}
+#drawer.min #console,#drawer.min .filters{display:none}
+.filters{display:flex;gap:14px;padding:0 20px 6px;font-size:12px;color:var(--dim)}
+.notice{border-left:3px solid var(--warn);background:#1a1a10;padding:10px 14px;border-radius:0 8px 8px 0;font-size:13px;color:#e8d9a0;margin-bottom:14px}
+.notice.blue{border-color:var(--acc);background:#0d1a26;color:#a8d4ee}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:800px){.grid2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>SuperKnobLite 控制台<small>串口 115200 · Web Serial</small></h1>
+  <span class="badge gray" id="badge">● 未连接</span>
+  <span id="devInfo"></span>
+  <div class="spacer"></div>
+  <button class="btn primary" id="btnTopConnect">连接设备</button>
+</header>
+
+<nav class="tabs">
+  <button data-tab="t1" class="on">① 连接测试</button>
+  <button data-tab="t2">② 设备自检</button>
+  <button data-tab="tplay">🎡 电机玩法</button>
+  <button data-tab="t3">③ 控制面板</button>
+  <button data-tab="t4">④ 断开连接</button>
+</nav>
+
+<main>
+
+<!-- ============ ① 连接测试 ============ -->
+<section class="tab on" id="t1">
+  <div class="notice blue" id="browserNote" style="display:none">
+    当前浏览器不支持 Web Serial API。请使用 <b>Chrome / Edge</b> 打开本页面（Safari、Firefox 不支持）。本地打开即可（file://），或运行 <code>python3 -m http.server</code> 后访问 localhost。
+  </div>
+
+  <div class="card">
+    <h2>设备连接 <span class="hint">选择串口 → 自动握手识别（先尝试回显握手，失败则复位设备捕获启动日志）</span></h2>
+    <div class="row">
+      <button class="btn primary" id="btnConnect" disabled>🔌 选择设备并连接</button>
+      <button class="btn" id="btnReconnect" style="display:none">↻ 重连上次的设备</button>
+      <label class="lb"><input type="checkbox" id="optFilter" checked> 只显示 WCH (CH343) 设备</label>
+      <select id="baudSel"><option>115200</option><option>9600</option><option>57600</option><option>230400</option></select>
+      <label class="lb">波特率（固件固定 115200，勿改）</label>
+    </div>
+    <div style="margin-top:12px" class="row">
+      <span class="stat"><b id="stRom">—</b><span>ESP32 芯片日志</span></span>
+      <span class="stat"><b id="stLogo">—</b><span>SuperKnob 固件指纹</span></span>
+      <span class="stat"><b id="stEcho">—</b><span>协议回显</span></span>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <button class="btn" id="btnBootLog" disabled>复位并捕获启动日志</button>
+      <button class="btn" id="btnTestPing" disabled>发送单次测试 Ping</button>
+    </div>
+    <div class="logbox" id="bootLogBox" style="display:none;margin-top:10px"></div>
+  </div>
+
+  <div class="card">
+    <h2>连接可靠性测试 <span class="hint">发送 JSON → 设备回显 → 逐包校验数值内容，统计成功率与往返时延</span></h2>
+    <div class="row">
+      <label class="lb">次数 <input type="number" id="relCount" value="100" min="1" max="5000"></label>
+      <label class="lb">间隔 ms <input type="number" id="relInterval" value="50" min="0" max="5000"></label>
+      <label class="lb">超时 ms <input type="number" id="relTimeout" value="1000" min="100" max="10000"></label>
+      <label class="lb"><input type="checkbox" id="relStress"> 压力模式（不等待回包连续发送）</label>
+      <button class="btn primary" id="btnRel" disabled>▶ 开始测试</button>
+      <button class="btn danger" id="btnRelStop" disabled>停止</button>
+    </div>
+    <div class="progress"><i id="relProg"></i></div>
+    <canvas id="rttChart" width="1000" height="240"></canvas>
+    <div style="margin-top:10px">
+      <span class="stat"><b id="relSent">0</b><span>已发送</span></span>
+      <span class="stat good"><b id="relOk">0</b><span>校验通过</span></span>
+      <span class="stat bad"><b id="relFail">0</b><span>丢失/失败</span></span>
+      <span class="stat warn"><b id="relMis">0</b><span>内容失配</span></span>
+      <span class="stat"><b id="relRate">—</b><span>成功率</span></span>
+      <span class="stat"><b id="relAvg">—</b><span>RTT 平均</span></span>
+      <span class="stat"><b id="relP95">—</b><span>RTT P95</span></span>
+      <span class="stat"><b id="relMax">—</b><span>RTT 最大</span></span>
+    </div>
+    <div class="logbox" id="relResult" style="display:none;margin-top:10px"></div>
+    <div class="bd" style="color:var(--dim);font-size:12px;margin-top:8px">
+      固件主循环每 100ms 轮询一次串口（main.cpp loop → delay(100)），正常 RTT 约 0~120ms 属预期；超过 1s 未回包计为丢失。
+    </div>
+  </div>
+</section>
+
+<!-- ============ ② 设备自检 ============ -->
+<section class="tab" id="t2">
+  <div class="card">
+    <h2>设备自检 <span class="hint">自动项由串口证据判定；交互项需要你按提示在设备上配合操作</span></h2>
+    <div class="row">
+      <button class="btn primary" id="btnSelfAll" disabled>▶ 一键自检（自动项）</button>
+      <span class="lb" id="selfSummary"></span>
+    </div>
+    <div id="testList" style="margin-top:12px"></div>
+  </div>
+</section>
+
+<!-- ============ 🎡 电机玩法 ============ -->
+<section class="tab" id="tplay">
+  <div class="card">
+    <h2>转速伺服 <span class="hint">设定目标转速让电机闭环维持该转速（可正反转，带安全限速）</span></h2>
+    <div class="row">
+      <span class="pill" id="servoPill">未启用</span>
+      <button class="btn primary" id="btnServoCw" disabled>↻ 启动正转</button>
+      <button class="btn primary" id="btnServoCcw" disabled>↺ 启动反转</button>
+      <button class="btn danger" id="btnServoStop" disabled>■ 停止转速伺服</button>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <label class="lb">目标转速 <input type="number" id="servoSpeed" value="3" min="0.5" max="20" step="0.5" style="width:80px"> rad/s</label>
+      <label class="lb">安全限速 <input type="number" id="servoMax" value="15" min="1" max="20" step="1" style="width:70px"> rad/s</label>
+      <span class="stat"><b id="servoActual">—</b><span>实际转速 rad/s</span></span>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <label class="lb" style="flex:1">实时调速
+        <input type="range" id="servoLiveSpeed" min="0.5" max="20" step="0.5" value="3" style="flex:1;min-width:180px">
+      </label>
+    </div>
+    <div class="bd" style="color:var(--dim);font-size:12px;margin-top:8px">
+      伺服启动后电机会持续保持在目标转速（不受触觉引擎的档位/阻尼影响）；拖动「实时调速」滑块可边转边调速，速度绝对值会被安全限速钳制。<b>玩完务必点「■ 停止转速伺服」</b>，否则电机会一直转。
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>触觉模式 <span class="hint">电机手感（触觉引擎）·切换后立即生效</span></h2>
+    <div class="row">
+      <span class="pill" id="hapPill">● 未设置</span>
+      <span class="lb" id="hapDesc">当前手感：—</span>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <button class="btn primary" id="btnHapDetent" disabled>▦ 档位/棘轮</button>
+      <button class="btn primary" id="btnHapSpring" disabled>🌀 弹簧回中</button>
+      <button class="btn primary" id="btnHapViscous" disabled>🍯 粘滞搅拌</button>
+      <button class="btn primary" id="btnHapOneway" disabled>➡ 单向棘轮</button>
+      <button class="btn primary" id="btnHapEndstop" disabled>🧱 离心限位</button>
+      <button class="btn primary" id="btnHapFree" disabled>🌀 自由飞轮</button>
+      <label class="lb">限位半宽 <input type="number" id="mtEndRange" value="3.0" min="0.5" max="6" step="0.5" style="width:80px"> rad</label>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <label class="lb"><input type="checkbox" id="chkPosReport" checked> 位置感知上报（每 50ms 上报一次角度/速度，供下方曲线使用）</label>
+    </div>
+    <div class="bd" style="color:var(--dim);font-size:12px;margin-top:8px">
+      档位/棘轮：一格一格的机械档位感 ｜ 弹簧回中：越转越重，松手回中 ｜ 粘滞搅拌：阻尼随转速增大，停下即静止 ｜ 单向棘轮：只能正转，反转被强力顶住 ｜ 离心限位：范围内自由，两端硬限位墙 ｜ 自由飞轮：拨一下转好几圈，几乎无阻尼。
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>旋钮位置实时感知 <span class="hint">读取触觉引擎上报的角度/速度/档位（需 2026-10 之后编译的自定义固件）</span></h2>
+    <div class="row">
+      <span class="pill" id="posPill">● 无位置数据</span>
+      <span class="stat"><b id="posAngleDeg">—</b><span>角度 °</span></span>
+      <span class="stat"><b id="posCount">—</b><span>累计圈数</span></span>
+      <span class="stat"><b id="posVel">—</b><span>速度 rad/s</span></span>
+      <span class="stat"><b id="posDetent">—</b><span>档位</span></span>
+      <span class="pill" id="posDir">静止</span>
+    </div>
+    <canvas id="posChart" width="1000" height="200" style="margin-top:10px"></canvas>
+    <div class="bd" style="color:var(--dim);font-size:12px;margin-top:6px">
+      设备每 50ms 上报一行 <code>{"t":"pos","angle":…,"velocity":…}</code>；angle 单位为弧度（2π = 一圈），曲线纵轴为角度（度），横轴为时间（最近 240 个采样点 ≈ 12 秒）。
+    </div>
+  </div>
+</section>
+
+<!-- ============ ③ 控制面板 ============ -->
+<section class="tab" id="t3">
+  <div class="grid2">
+    <div class="card">
+      <h2>CPU / 内存 注入</h2>
+      <div class="row" style="margin-bottom:6px">
+        <span class="lb">CPU</span><input type="range" id="cpuSlider" min="0" max="100" step="0.1" value="30" style="flex:1">
+        <span class="bigval" id="cpuVal">30.0</span>
+      </div>
+      <div class="row" style="margin-bottom:6px">
+        <span class="lb">内存</span><input type="range" id="memSlider" min="0" max="100" step="0.1" value="60" style="flex:1">
+        <span class="bigval" id="memVal">60.0</span>
+      </div>
+      <div class="row">
+        <button class="btn" id="btnSendOnce" disabled>发送一次</button>
+        <label class="lb"><input type="checkbox" id="liveFollow"> 实时跟随（滑块变化即发送）</label>
+      </div>
+    </div>
+    <div class="card">
+      <h2>自动波形</h2>
+      <div class="row">
+        <select id="waveType"><option value="sine">正弦波</option><option value="tri">三角波</option><option value="rand">随机跳变</option></select>
+        <label class="lb">频率 <input type="number" id="waveHz" value="0.5" min="0.1" max="2" step="0.1" style="width:70px"> Hz</label>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <button class="btn primary" id="btnWave" disabled>▶ 开始</button>
+        <button class="btn danger" id="btnWaveStop" disabled>■ 停止</button>
+        <label class="lb"><input type="checkbox" id="waveSyncMotor" checked> 同步写入内存通道</label>
+      </div>
+      <div class="bd" style="color:var(--dim);font-size:12px;margin-top:8px">设备指针将按波形摆动；下方图可对照「发送值 vs 设备回显值」验证链路完整性。</div>
+    </div>
+  </div>
+  <div class="card">
+    <h2>电机远程控制 <span class="hint">接管 FOC 控制环，绕过触觉算法（需 2026-10 之后编译的自定义固件）</span></h2>
+    <div class="row">
+      <span class="pill" id="motorPill">未接管</span>
+      <span class="stat"><b id="mtTarget">—</b><span>目标角 rad</span></span>
+      <span class="stat"><b id="mtVel">—</b><span>当前速度 rad/s</span></span>
+      <span class="stat"><b id="mtMode">—</b><span>模式</span></span>
+    </div>
+    <div style="margin-top:12px">
+      <div class="row" style="margin-bottom:8px">
+        <button class="btn primary" id="btnRotCw" disabled>↻ 顺时针连续转</button>
+        <button class="btn primary" id="btnRotCcw" disabled>↺ 逆时针连续转</button>
+        <label class="lb">角速度 <input type="number" id="mtSpeed" value="3" min="0.5" max="20" step="0.5" style="width:80px"> rad/s</label>
+      </div>
+      <div class="row" style="margin-bottom:8px">
+        <button class="btn" id="btnSweep" disabled>⇄ 开始往复摆动</button>
+        <label class="lb">幅度 <input type="number" id="mtRange" value="3" min="0.5" max="12" step="0.5" style="width:80px"> rad</label>
+        <label class="lb">速度 <input type="number" id="mtSweepSpd" value="2" min="0.5" max="10" step="0.5" style="width:80px"> rad/s</label>
+      </div>
+      <div class="row" style="margin-bottom:8px">
+        <button class="btn" id="btnHold" disabled>⊙ 转到指定角度</button>
+        <label class="lb">角度 <input type="number" id="mtAngle" value="0" step="0.1" style="width:90px"> rad</label>
+        <button class="btn" id="btnStep" disabled>⇥ 跳到档位</button>
+        <label class="lb">档位 <input type="number" id="mtStepPos" value="0" min="0" max="30" step="1" style="width:80px"></label>
+      </div>
+      <div class="row">
+        <button class="btn danger" id="btnRelease" disabled>■ 立即停止 · 恢复正常触觉</button>
+      </div>
+    </div>
+    <div class="bd" style="color:var(--dim);font-size:12px;margin-top:8px">
+      连续旋转可无级调速；往复摆动以进入时的角度为中心往复；跳档位复用页面档位角度栅格（1 档 = 8.23° ≈ 0.144 rad）。<b>「立即停止」务必在测试后点击</b>，否则电机不会回到阻尼手感。
+    </div>
+  </div>
+  <details class="fold">
+    <summary>📺 屏幕相关功能（屏幕故障时可忽略此区）</summary>
+    <div class="notice">
+      当前固件的串口协议仅支持注入 <code>{"cpu":x,"memory":y}</code>，效果显示在设备的<b>「电脑监测」</b>页面 —— 请先在设备上：旋钮选中「电脑监测」→ 触摸按键进入。<br>
+      注意：设备端 <code>cpu=0</code> 时会弹出「please connect to pc!!!」提示框，所以推送值不能为 0（下限钳制到 1）。
+    </div>
+    <div class="card">
+    <h2>屏幕诊断 <span class="hint">背光亮但黑屏时使用：回读面板 + 纯色刷屏</span></h2>
+    <div class="row">
+      <button class="btn" id="btnDispDiag" disabled>🔍 回读 ST7735 寄存器</button>
+      <button class="btn primary" id="btnDispTest" disabled>🎨 纯色刷屏自检（红绿蓝白）</button>
+      <button class="btn" id="btnDispTestStop" disabled>■ 停止自检</button>
+    </div>
+    <div class="notice" style="margin:10px 0 0">
+      屏幕无显示排查顺序：① 点「回读寄存器」看 <code>[DISP] reg</code> 结果——若全是 <code>0xFF</code> 说明 MISO 无响应（排线松动/面板损坏/未接 MISO）；
+      ② 点「纯色刷屏」肉眼观察——<b>若能看到颜色闪烁则面板和 SPI 正常，问题在 LVGL 渲染层；若仍然全黑则是硬件问题</b>。
+    </div>
+    <div class="logbox" id="dispLog" style="display:none;margin-top:10px;height:120px"></div>
+  </div>
+  <div class="card">
+    <h2>电脑实时资源监控 <span class="hint">真实系统 CPU/内存 → 设备屏幕与指针（需本地采集服务提供系统指标）</span></h2>
+    <div class="row">
+      <span class="pill" id="svcPill">服务未连接</span>
+      <span class="lb" id="svcInfo">启动采集服务：<code>node tools/knob_server.mjs</code></span>
+      <button class="btn" id="btnProbeSvc">检测服务</button>
+      <button class="btn primary" id="btnPushPc" disabled>▶ 推送实时数据</button>
+      <button class="btn danger" id="btnPushPcStop" disabled>■ 停止</button>
+    </div>
+    <div style="margin-top:10px">
+      <span class="stat"><b id="pcCpu">—</b><span>真实 CPU %</span></span>
+      <span class="stat"><b id="pcMem">—</b><span>真实内存 %</span></span>
+      <span class="stat"><b id="pcPushCpu">—</b><span>已推送 CPU</span></span>
+      <span class="stat"><b id="pcPushMem">—</b><span>已推送内存</span></span>
+      <span class="stat"><b id="pcPushOk">0/0</b><span>推送校验通过</span></span>
+    </div>
+    <canvas id="pcChart" width="1000" height="200" style="margin-top:10px"></canvas>
+    <div class="bd" style="color:var(--dim);font-size:12px;margin-top:6px">
+      推送频率 1Hz（固件主循环 100ms 轮询，足够）。屏幕上：圆形仪表盘=CPU 百分比，底部横条=内存，旋钮指针角度随 CPU 变化。
+    </div>
+    </div>
+  </details>
+  <div class="card">
+    <h2>发送 vs 回显 曲线</h2>
+    <canvas id="waveChart" width="1000" height="240"></canvas>
+  </div>
+  <div class="card">
+    <h2>设备事件流 <span class="hint">0=页面切换 1=触摸点击 2=自动运行（来自固件 motor_rcv_Queue / lvgl_msg_Queue 打印）</span></h2>
+    <div class="row" style="margin-bottom:8px">
+      <button class="btn" id="btnBadJson" disabled>发送非法 JSON（测试固件错误处理）</button>
+      <span class="lb">测完点此恢复：</span>
+      <button class="btn" id="btnRecoverBadJson" disabled>复位设备（必须）</button>
+    </div>
+    <div class="notice" style="margin-bottom:10px">
+      ⚠ 原厂固件在 JSON 解析失败时<strong>不会清空接收缓冲</strong>（main.cpp 收到坏行后直接 return）。一旦发过非法数据，设备串口会<strong>永久失步</strong>，之后所有正常指令都失效——<strong>必须复位设备才能恢复</strong>。此按钮仅用于验证固件错误处理路径，请勿在正式使用中点击。
+    </div>
+    <div class="logbox" id="eventFeed" style="height:150px"></div>
+  </div>
+</section>
+
+<!-- ============ ④ 断开连接 ============ -->
+<section class="tab" id="t4">
+  <div class="card">
+    <h2>会话统计</h2>
+    <div>
+      <span class="stat"><b id="sDur">—</b><span>连接时长</span></span>
+      <span class="stat"><b id="sTx">0</b><span>发送字节</span></span>
+      <span class="stat"><b id="sRx">0</b><span>接收字节</span></span>
+      <span class="stat"><b id="sPing">0/0</b><span>Ping 通过/总数</span></span>
+      <span class="stat"><b id="sEvt">0</b><span>设备事件</span></span>
+      <span class="stat"><b id="sReset">0</b><span>复位次数</span></span>
+      <span class="stat"><b id="sErr">0</b><span>固件解析错误</span></span>
+    </div>
+  </div>
+  <div class="card">
+    <h2>断开</h2>
+    <div class="row">
+      <label class="lb"><input type="checkbox" id="discReset" checked> 断开前复位设备（让固件回到干净的初始状态）</label>
+      <button class="btn danger" id="btnDisconnect" disabled>⏻ 断开连接</button>
+    </div>
+    <div class="logbox" id="discSummary" style="display:none;margin-top:12px"></div>
+  </div>
+</section>
+
+<details>
+  <summary>📋 当前固件串口协议说明（实测源码整理）</summary>
+  <table>
+    <tr><th>方向</th><th>内容</th><th>说明</th></tr>
+    <tr><td>PC → 设备</td><td>{"cpu":16.7,"memory":90.7}\n</td><td>唯一受支持指令；设备存入 PC_MONITOR 驱动「电脑监测」页</td></tr>
+    <tr><td>设备 → PC</td><td>16.70 / 90.70 两行数值</td><td>收到合法 JSON 后原样回显（本页面据此做 ping/pong 校验）</td></tr>
+    <tr><td>设备 → PC</td><td>deserializeJson() failed: …</td><td>JSON 解析失败的报错回显</td></tr>
+    <tr><td>设备 → PC</td><td>motor_rcv_Queue --->N / lvgl_msg_Queue --->N</td><td>N=0 页面切换 1 触摸点击 2 自动运行；FOC/LVGL 任务存活证据</td></tr>
+    <tr><td>设备 → PC</td><td>ASCII logo + rst:0x…</td><td>启动日志；复位设备后可捕获，用作固件/芯片指纹</td></tr>
+    <tr><td>设备 → PC</td><td>sht30 init failed !!!</td><td>SHT30 未响应（该机型默认不贴装此传感器，属正常）</td></tr>
+  </table>
+  <p style="color:var(--dim);font-size:12px;margin-top:8px">注：原厂固件未开放电机角度、灯光、页面切换等串口指令（SimpleFOC commander 已在编译期禁用）。如需远程控制这些组件，需按 AGENTS.md 的协议升级方向扩展固件。</p>
+</details>
+
+</main>
+
+<!-- 串口监视器 -->
+<div id="drawer">
+  <div class="bar" id="drawerBar"><b>▾ 串口监视器</b><span id="drawerStat"></span><div class="spacer"></div><span>点击标题折叠/展开</span></div>
+  <div class="filters">
+    <label><input type="checkbox" id="fTX" checked> 发送</label>
+    <label><input type="checkbox" id="fRX" checked> 接收</label>
+    <label><input type="checkbox" id="fSYS" checked> 系统</label>
+    <label><input type="checkbox" id="fEVT" checked> 事件</label>
+    <div class="spacer"></div>
+    <label><input type="checkbox" id="autoScroll" checked> 自动滚动</label>
+    <button class="btn" id="btnClearLog" style="padding:2px 10px;font-size:12px">清空</button>
+  </div>
+  <div id="console"></div>
+</div>
+
+<script>
+'use strict';
+const $=s=>document.querySelector(s);
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const nowStr=()=>{const d=new Date();return d.toTimeString().slice(0,8)+'.'+String(d.getMilliseconds()).padStart(3,'0')};
+const LOGO_MARK="| '_ \\ / _ \\";
+const NUM_RE=/^-?\d+(\.\d+)?$/;
+const EVT_LABEL={0:'页面切换',1:'触摸点击',2:'自动运行'};
+
+const S={
+  port:null,writer:null,reader:null,keepReading:false,connected:false,verified:false,
+  baud:115200,tx:0,rx:0,tConnect:null,resets:0,decoder:null,lineBuf:'',
+  bootCapture:false,bootLines:[],sawRom:false,sawLogo:false,sawSht30Fail:false,sawSht30Read:false,
+  events:[],noise:0,parseErrors:0,wedged:false,
+  ping:{pending:[],ok:0,fail:0,mismatch:0,rtts:[]},
+  relRunning:false,waveRunning:false,
+};
+const listeners={};
+const on=(ev,fn)=>{(listeners[ev]=listeners[ev]||[]).push(fn)};
+const emit=(ev,d)=>(listeners[ev]||[]).forEach(f=>{try{f(d)}catch(e){console.error(e)}});
+
+/* ================= 串口监视器 ================= */
+const consoleEl=$('#console');
+let logCount=0;
+function log(type,text){
+  if(type==='TX'&&!$('#fTX').checked)return;
+  if(type==='RX'&&!$('#fRX').checked)return;
+  if(type==='SYS'&&!$('#fSYS').checked)return;
+  if(type==='EVT'&&!$('#fEVT').checked)return;
+  const div=document.createElement('div');
+  div.dataset.type=type;
+  div.innerHTML=`<span class="t">${nowStr()}</span> <span class="${type}">[${type}]</span> ${escapeHtml(text)}`;
+  consoleEl.appendChild(div);
+  if(++logCount>1500){consoleEl.removeChild(consoleEl.firstChild);logCount--}
+  if($('#autoScroll').checked)consoleEl.scrollTop=consoleEl.scrollHeight;
+  $('#drawerStat').textContent=`TX ${S.tx}B / RX ${S.rx}B`;
+}
+const escapeHtml=s=>s.replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+$('#btnClearLog').onclick=()=>{consoleEl.innerHTML='';logCount=0};
+$('#drawerBar').onclick=()=>$('#drawer').classList.toggle('min');
+
+/* ================= 串口核心层 ================= */
+let writeChain=Promise.resolve();
+function write(str){
+  if(!S.writer)return Promise.reject(new Error('串口未连接'));
+  const bytes=new TextEncoder().encode(str);
+  S.tx+=bytes.length;
+  log('TX',str.trimEnd());
+  writeChain=writeChain.then(()=>S.writer.write(bytes)).catch(e=>log('SYS','✗ 写入失败: '+e.message));
+  return writeChain;
+}
+function handleBytes(value){
+  S.rx+=value.length;
+  const text=S.decoder.decode(value,{stream:true});
+  S.lineBuf+=text;
+  for(;;){
+    const m=S.lineBuf.match(/[\r\n]/);
+    if(!m)break;
+    const line=S.lineBuf.slice(0,m.index).trim();
+    let j=m.index;
+    while(j<S.lineBuf.length&&/[\r\n]/.test(S.lineBuf[j]))j++;
+    S.lineBuf=S.lineBuf.slice(j);
+    if(line)handleLine(line);
+  }
+  if(S.lineBuf.length>4096)S.lineBuf='';
+}
+function handleLine(line){
+  log('RX',line);
+  if(S.bootCapture)S.bootLines.push(line);
+  if(NUM_RE.test(line)){onNumericLine(parseFloat(line));return}
+  let m;
+  if(m=line.match(/motor_rcv_Queue --->(\d+)/)){pushEvent('motor',+m[1]);return}
+  if(m=line.match(/lvgl_msg_Queue --->(\d+)/)){pushEvent('lvgl',+m[1]);return}
+  if(line.includes('deserializeJson() failed')){S.parseErrors++;S.wedged=true;updateButtons();emit('parse-error',line);return}
+  if(line.startsWith('rst:0x')){S.sawRom=true;return}
+  if(line.includes(LOGO_MARK)){S.sawLogo=true;return}
+  if(/sht30 init failed|chaeck the sht30 sensor/.test(line)){S.sawSht30Fail=true;return}
+  if(/相对湿度|摄氏度温度/.test(line)){S.sawSht30Read=true;return}
+  if(line.includes('(motor.shaft_velocity) > 60')){log('SYS','⚠ 固件触发过速保护（|速度|>60rad/s 力矩清零）');return}
+  emit('line',line);
+}
+function pushEvent(src,id){
+  const ev={t:nowStr(),src,id,label:EVT_LABEL[id]??'未知#'+id};
+  S.events.push(ev);
+  log('EVT',`${src} 事件 #${id} ${ev.label}`);
+  emit('event',ev);
+  $('#sEvt').textContent=S.events.length;
+}
+async function readLoop(){
+  while(S.port&&S.port.readable&&S.keepReading){
+    S.reader=S.port.readable.getReader();
+    try{
+      for(;;){
+        const{value,done}=await S.reader.read();
+        if(done)break;
+        handleBytes(value);
+      }
+    }catch(e){log('SYS','读中断: '+e.message)}
+    finally{try{S.reader.releaseLock()}catch(e){}S.reader=null}
+  }
+  if(S.keepReading){ // readable 被关闭 = 设备拔出
+    handleDisconnect('设备连接已断开（USB 拔出或设备掉电）');
+  }
+}
+async function hardReset(){
+  clearPendingPings('复位');
+  await S.port.setSignals({dataTerminalReady:false,requestToSend:false});
+  await sleep(60);
+  await S.port.setSignals({requestToSend:true});   // RTS 脉冲 → EN 拉低 → 正常重启
+  await sleep(130);
+  await S.port.setSignals({requestToSend:false});
+  S.resets++;
+  log('SYS','已通过 RTS 复位设备');
+}
+function clearPendingPings(reason){
+  S.ping.pending.forEach(p=>{clearTimeout(p.timer)});
+  S.ping.pending=[];
+}
+async function openPort(port,baud){
+  S.port=port;
+  await port.open({baudRate:baud,dataBits:8,stopBits:1,parity:'none',bufferSize:4096,flowControl:'none'});
+  S.baud=baud;
+  S.writer=port.writable.getWriter();
+  S.decoder=new TextDecoder('utf-8');
+  S.keepReading=true;
+  S.connected=true;S.verified=false;
+  S.tx=0;S.rx=0;S.tConnect=Date.now();S.resets=0;S.events=[];S.noise=0;S.parseErrors=0;
+  S.ping={pending:[],ok:0,fail:0,mismatch:0,rtts:[]};
+  S.sawRom=false;S.sawLogo=false;S.sawSht30Fail=false;S.sawSht30Read=false;
+  readLoop();
+  const info=port.getInfo?.()||{};
+  const vid=info.usbVendorId?info.usbVendorId.toString(16).padStart(4,'0'):'????';
+  const pid=info.usbProductId?info.usbProductId.toString(16).padStart(4,'0'):'????';
+  $('#devInfo').textContent=`USB ${vid}:${pid} @ ${baud}`;
+  setBadge('blue','● 已连接，识别中…');
+  updateButtons();
+  navigator.serial.removeEventListener('disconnect',onUsbDisconnect);
+  navigator.serial.addEventListener('disconnect',onUsbDisconnect);
+  log('SYS','串口已打开，开始读取…');
+}
+function onUsbDisconnect(e){if(e.target===S.port)handleDisconnect('USB 设备已拔出')}
+function handleDisconnect(msg){
+  if(!S.connected)return;
+  S.connected=false;S.verified=false;S.keepReading=false;
+  clearPendingPings();
+  setBadge('red','● 已断开');
+  log('SYS',msg);
+  setServoUi(false);          // 断线后转速伺服状态复位，避免 pill 停在「运行中」
+  updateButtons();
+}
+async function closePort(){
+  S.keepReading=false;
+  try{await S.reader?.cancel()}catch(e){}
+  try{S.writer?.releaseLock()}catch(e){}
+  try{await S.port.close()}catch(e){}
+  S.writer=null;S.reader=null;
+}
+function setBadge(cls,text){const b=$('#badge');b.className='badge '+cls;b.textContent=text}
+function updateButtons(){
+  const c=S.connected;
+  ['btnConnect','btnReconnect'].forEach(id=>{if(id==='btnReconnect')return;$( '#'+id).disabled=c});
+  ['btnBootLog','btnTestPing','btnRel','btnSelfAll','btnSendOnce','btnWave','btnBadJson','btnDisconnect','btnRecoverBadJson','btnPushPc','btnRotCw','btnRotCcw','btnSweep','btnHold','btnStep','btnRelease','btnDispDiag','btnDispTest','btnDispTestStop','btnHapDetent','btnHapSpring','btnHapViscous','btnHapOneway','btnHapEndstop','btnHapFree','btnServoCw','btnServoCcw','btnServoStop']
+    .forEach(id=>$('#'+id).disabled=!c);
+  if($('#badgeWedge'))$('#badgeWedge').style.display=S.wedged?'':'none';
+  $('#btnTopConnect').textContent=c?'已连接':'连接设备';
+  $('#btnTopConnect').disabled=c;
+}
+
+/* ================= Ping / 回显校验 ================= */
+function sendPing(cpu,{timeout=1000,mem=50}={}){
+  if(S.wedged){
+    log('SYS','✗ 串口已失步（固件未清空接收缓冲），发送无效——请先复位设备');
+    return Promise.resolve(false);
+  }
+  return new Promise(res=>{
+    const p={cpu:+cpu.toFixed(2),mem,t0:performance.now(),gotCpu:false,resolve:res,
+      timer:setTimeout(()=>{
+        const i=S.ping.pending.indexOf(p);
+        if(i>=0){S.ping.pending.splice(i,1);S.ping.fail++;emit('ping-fail',{cpu:p.cpu,reason:p.gotCpu?'回包不完整':'超时'});updateRelStats()}
+        res(false);
+      },timeout)};
+    S.ping.pending.push(p);
+    write(`{"cpu":${cpu.toFixed(2)},"memory":${mem.toFixed(2)}}\n`);
+  });
+}
+function onNumericLine(v){
+  const p=S.ping.pending[0];
+  if(!p){S.noise++;return}
+  if(!p.gotCpu){
+    if(Math.abs(v-p.cpu)<=0.051){p.gotCpu=true}
+    else{S.ping.mismatch++;log('SYS',`✗ 内容失配：期望 cpu=${p.cpu.toFixed(2)}，收到 ${v.toFixed(2)}`);updateRelStats()}
+  }else{
+    if(Math.abs(v-p.mem)<=0.051){
+      clearTimeout(p.timer);
+      S.ping.pending.shift();
+      const rtt=performance.now()-p.t0;
+      S.ping.ok++;S.ping.rtts.push(rtt);
+      emit('ping-ok',{rtt,cpu:p.cpu,mem:p.mem});
+      updateRelStats();
+      p.resolve(true);          // 成功时必须兑现 promise，否则 await 永久挂起
+    }else{S.ping.mismatch++;log('SYS',`✗ 内容失配：期望 mem=${p.mem.toFixed(2)}，收到 ${v.toFixed(2)}`)}
+  }
+}
+function updateRelStats(){
+  $('#relOk').textContent=S.ping.ok;
+  $('#relFail').textContent=S.ping.fail;
+  $('#relMis').textContent=S.ping.mismatch;
+}
+
+/* ================= ① 连接测试 ================= */
+if(!('serial' in navigator)){
+  $('#browserNote').style.display='block';
+}else{
+  navigator.serial.getPorts().then(ports=>{
+    if(ports.length){$('#btnReconnect').style.display='';$('#btnReconnect').onclick=()=>doConnect(ports[0])}
+    $('#btnConnect').disabled=false;
+  });
+}
+async function doConnect(prePort){
+  try{
+    let port=prePort;
+    if(!port){
+      const filter=$('#optFilter').checked?{filters:[{usbVendorId:0x1a86}]}:{};
+      port=await navigator.serial.requestPort(filter);
+    }
+    setBadge('blue','● 连接中…');
+    await openPort(port,+$('#baudSel').value);
+    await handshake();
+  }catch(e){
+    if(e.name==='NotFoundError'){log('SYS','未选择设备')}
+    else{setBadge('red','● 连接失败');log('SYS','✗ 连接失败: '+e.message)}
+  }
+}
+$('#btnConnect').onclick=()=>doConnect();
+$('#btnTopConnect').onclick=()=>{switchTab('t1');doConnect()};
+
+async function handshake(){
+  // 打开串口会复位设备，电机校准+启动需 10~25 秒，期间无回显属正常，持续重试
+  log('SYS','握手中：设备刚复位启动（FOC 校准约需 10~25 秒），持续探测 25 秒…');
+  const t0=performance.now();
+  let tries=0,ok=0;
+  while(performance.now()-t0<25000){
+    tries++;
+    if(await sendPing(10+(tries%9)*0.1,{timeout:700}))ok++;
+    setBadge('blue',`● 已连接，识别中… ${Math.round((performance.now()-t0)/1000)}s`);
+    if(ok>=2)break;
+    await sleep(300);
+  }
+  if(ok>=1){
+    S.verified=true;
+    $('#stEcho').textContent='✓ 正常';$('#stEcho').parentElement.classList.add('good');
+    $('#stLogo').textContent='未复位检测';
+    setBadge('green','● 已验证');
+    log('SYS',`✓ 握手成功（回显确认，${ok}/${tries} 次探测通过）—— SuperKnobLite 在线`);
+    updateButtons();
+    autoEnablePosReport();
+    return;
+  }
+  log('SYS','25 秒内无回显，尝试复位设备并捕获启动日志…');
+  const found=await captureBootLog(2200,false);
+  if(found){
+    S.verified=true;
+    setBadge('green','● 已验证');
+    log('SYS','✓ 通过启动日志确认 SuperKnobLite 固件在线');
+    if(!S.sawEchoNote){$('#stEcho').textContent='未响应Ping'}
+  }else{
+    setBadge('yellow','● 已连接，未识别');
+    log('SYS','⚠ 端口已打开，但既无回显也无启动日志特征。请确认：① 设备为 SuperKnobLite ② 波特率 115200 ③ 是否被其他程序占用（如 screen / esptool）');
+  }
+  updateButtons();
+  autoEnablePosReport();
+}
+async function captureBootLog(ms=2200,showBox=true){
+  stateBootReset();
+  S.bootCapture=true;S.bootLines=[];S.sawRom=false;S.sawLogo=false;S.sawSht30Fail=false;S.sawSht30Read=false;
+  try{await hardReset()}catch(e){}
+  await sleep(ms);
+  S.bootCapture=false;
+  $('#stRom').textContent=S.sawRom?'✓ 检测到':'—';
+  $('#stLogo').textContent=S.sawLogo?'✓ 匹配':'—';
+  if(showBox){
+    const box=$('#bootLogBox');box.style.display='block';
+    box.textContent=S.bootLines.length?S.bootLines.join('\n'):'（未捕获到任何输出）';
+  }
+  return S.sawLogo||S.sawRom;
+}
+function stateBootReset(){}
+$('#btnBootLog').onclick=async()=>{
+  if(!S.connected)return;
+  $('#btnBootLog').disabled=true;
+  await captureBootLog(2200,true);
+  if(S.sawSht30Fail)log('SYS','ℹ 启动日志含 sht30 init failed —— 本机型默认不贴装 SHT30，属正常现象');
+  $('#btnBootLog').disabled=false;
+};
+$('#btnTestPing').onclick=async()=>{
+  if(!S.connected)return;
+  $('#btnTestPing').disabled=true;
+  const ok=await sendPing(Math.random()*100,{timeout:1200,mem:Math.round(Math.random()*100)});
+  log('SYS',ok?'✓ Ping 通过（设备已回显且数值校验一致）':'✗ Ping 失败（超时或失配）');
+  $('#btnTestPing').disabled=false;
+};
+
+/* ---- 可靠性测试 ---- */
+const rttChart=$('#rttChart');const rttCtx=rttChart.getContext('2d');
+let rttSamples=[];
+function drawRtt(){
+  const w=rttChart.width,h=rttChart.height,c=rttCtx;
+  c.clearRect(0,0,w,h);
+  c.strokeStyle='#1f2b38';c.lineWidth=1;
+  const maxR=Math.max(120,...rttSamples.map(s=>s.rtt||0))*1.1;
+  for(let i=1;i<4;i++){c.beginPath();c.moveTo(0,h*i/4);c.lineTo(w,h*i/4);c.stroke()}
+  c.fillStyle='#4a5b6d';c.font='11px monospace';
+  c.fillText(maxR.toFixed(0)+'ms',4,12);c.fillText('0ms',4,h-4);
+  const n=rttSamples.length;if(!n)return;
+  const step=w/Math.max(n-1,1);
+  c.strokeStyle='#4cc2ff';c.lineWidth=1.5;c.beginPath();
+  let pen=false;
+  rttSamples.forEach((s,i)=>{
+    const x=i*step;
+    if(s.rtt==null){pen=false;c.fillStyle='#ff5252';c.fillRect(x-2,h-8,4,8);return}
+    const y=h-(s.rtt/maxR)*(h-16)-8;
+    pen?c.lineTo(x,y):c.moveTo(x,y);pen=true;
+  });
+  c.stroke();
+}
+let relAbort=false;
+$('#btnRel').onclick=runReliability;
+$('#btnRelStop').onclick=()=>{relAbort=true};
+async function runReliability(){
+  if(!S.connected||S.relRunning)return;
+  const n=+$('#relCount').value,iv=+$('#relInterval').value,to=+$('#relTimeout').value;
+  const stress=$('#relStress').checked;
+  S.relRunning=true;relAbort=false;
+  $('#btnRel').disabled=true;$('#btnRelStop').disabled=false;
+  rttSamples=[];
+  const base={ok:S.ping.ok,fail:S.ping.fail,mis:S.ping.mismatch};
+  const t0=performance.now();
+  log('SYS',`▶ 可靠性测试开始：${n} 包 / 间隔 ${iv}ms / 超时 ${to}ms${stress?' / 压力模式':''}`);
+  if(!stress){
+    for(let i=0;i<n;i++){
+      if(relAbort)break;
+      const cpu=(i%1000)/10;
+      const ok=await sendPing(cpu,{timeout:to});
+      rttSamples.push({rtt:ok?S.ping.rtts[S.ping.rtts.length-1]:null});
+      $('#relProg').style.width=((i+1)/n*100)+'%';
+      $('#relSent').textContent=i+1;
+      drawRtt();
+      await sleep(iv);
+    }
+  }else{
+    const jobs=[];
+    for(let i=0;i<n;i++){
+      if(relAbort)break;
+      jobs.push(sendPing((i%1000)/10,{timeout:to}));
+      $('#relProg').style.width=(i/n*100)+'%';
+      $('#relSent').textContent=i+1;
+      if(i%20===0)await sleep(0);
+    }
+    await Promise.all(jobs);
+  }
+  clearPendingPings();
+  const dOk=S.ping.ok-base.ok,dFail=S.ping.fail-base.fail,dMis=S.ping.mismatch-base.mis;
+  const total=dOk+dFail,rate=total?dOk/total:0;
+  const rtts=S.ping.rtts.slice(-(dOk));
+  const avg=rtts.length?rtts.reduce((a,b)=>a+b,0)/rtts.length:0;
+  const sorted=[...rtts].sort((a,b)=>a-b);
+  const p95=sorted.length?sorted[Math.floor(sorted.length*0.95)]:0;
+  const mx=sorted.length?sorted[sorted.length-1]:0;
+  const dur=(performance.now()-t0)/1000;
+  $('#relRate').textContent=(rate*100).toFixed(1)+'%';
+  $('#relRate').parentElement.className='stat '+(rate>=0.99?'good':rate>=0.95?'warn':'bad');
+  $('#relAvg').textContent=avg?avg.toFixed(1)+'ms':'—';
+  $('#relP95').textContent=p95?p95.toFixed(1)+'ms':'—';
+  $('#relMax').textContent=mx?mx.toFixed(1)+'ms':'—';
+  const verdict=rate>=0.99?'✓ 链路可靠性优秀':rate>=0.95?'⚠ 链路可用，但存在丢包':'✗ 链路不稳定，建议更换 USB 线/接口后重试';
+  const box=$('#relResult');box.style.display='block';
+  box.textContent=`结果：发送 ${total} 通过 ${dOk} 失败 ${dFail} 失配 ${dMis} ｜ 成功率 ${(rate*100).toFixed(1)}% ｜ RTT 平均 ${avg.toFixed(1)}ms / P95 ${p95.toFixed(1)}ms / 最大 ${mx.toFixed(1)}ms ｜ 用时 ${dur.toFixed(1)}s\n判定：${verdict}${dMis>0?'\n⚠ 存在内容失配——回包数值与发送值不一致，链路存在比特级干扰！':''}`;
+  log('SYS',verdict);
+  S.relRunning=false;
+  $('#btnRel').disabled=false;$('#btnRelStop').disabled=true;
+  updateButtons();
+}
+
+/* ================= ② 设备自检 ================= */
+const TESTS=[
+  {id:'link',name:'通信链路（Ping × 10）',auto:true,
+   desc:'向设备发送 10 个探测包并逐包校验回显内容。',
+   async run(){
+     let ok=0;const base={ok:S.ping.ok};
+     for(let i=0;i<10;i++)if(await sendPing((i%1000)/10,{timeout:1000}))ok++;
+     const n=S.ping.ok-base.ok;
+     return ok>=9?['pass',`回显校验通过 ${ok}/10，链路正常`]:['fail',`仅 ${ok}/10 通过，通信不可靠`];
+   }},
+  {id:'boot',name:'固件启动自检（复位捕获）',auto:true,
+   desc:'复位设备并捕获启动日志，确认 ESP32 芯片与 SuperKnob 固件均正常启动。设备会重启一次。',
+   async run(){
+     const found=await captureBootLog(2200,false);
+     const sht=S.sawSht30Fail?'；SHT30 未响应（该机型默认不贴装，属正常）':'';
+     return found?['pass',`ESP32 ROM 日志 ${S.sawRom?'✓':'—'}｜SuperKnob logo ${S.sawLogo?'✓':'—'}${sht}`]
+                 :['fail','未捕获到启动日志特征'];
+   }},
+  {id:'motor',name:'电机 / FOC 任务',auto:true,
+   desc:'固件中 FOC 任务收到消息会打印 motor_rcv_Queue --->N。请在这 10 秒内：旋转旋钮切换页面、或按一下触摸键。捕获到事件即证明 FOC 1kHz 控制环存活。',
+   async run(){
+     const base=S.events.length;
+     for(let i=0;i<20;i++){
+       await sleep(500);
+       const got=S.events.slice(base).filter(e=>e.src==='motor');
+       if(got.length)return['pass',`捕获 FOC 任务事件 ×${got.length}（${got.map(e=>'#'+e.id+' '+e.label).join('、')}）`];
+     }
+     return['manual','10 秒内未捕获电机事件——请确认已旋转/按键过；如仍无输出，FOC 任务可能异常'];
+   }},
+  {id:'touch',name:'触摸按键 + 氛围灯',auto:true,
+   desc:'触摸按键按下会触发 BUTTON_CLICK 事件并点亮 WS2812 氛围灯。请在 10 秒内轻触设备面板的触摸键。',
+   async run(){
+     const base=S.events.length;
+     for(let i=0;i<20;i++){
+       await sleep(500);
+       const got=S.events.slice(base).filter(e=>e.id===1);
+       if(got.length)return['pass',`捕获触摸事件 ×${got.length}，GPIO32 触摸检测与消息链路正常（灯效请目视确认）`];
+     }
+     return['manual','10 秒内未捕获触摸事件——请确认已按压触摸区域'];
+   }},
+  {id:'screen',name:'屏幕 + 数据链路（电脑监测页）',auto:true,
+   desc:'请先把设备切到「电脑监测」页面（主菜单选中 → 触摸进入），然后点开始：将自动注入 0→100→0 扫描数据，设备指针应平滑摆动。（屏幕相关：屏幕无显示时可跳过本项）',
+   async run(){
+     let ok=0;const N=16;
+     for(let i=0;i<N;i++){
+       const v=(Math.sin(i/N*Math.PI*2)*0.5+0.5)*100;
+       if(await sendPing(v,{timeout:1000,mem:20+v*0.6}))ok++;
+       await sleep(120);
+     }
+     return ok>=N-2?['pass',`扫描数据回显校验 ${ok}/${N} 通过。屏幕指针若已摆动，请点「确认目视正常」`]
+                   :['fail',`回显仅 ${ok}/${N}，数据链路异常`];
+   }},
+  {id:'encoder',name:'AS5600 磁编码器',auto:false,
+   desc:'进入设备「角度」页面，旋转旋钮，屏幕度数应实时变化（12bit，0.09° 分辨率）。'},
+  {id:'sht',name:'SHT30 温湿度传感器',auto:false,
+   desc:'该机型 SHT30 默认不贴装。若启动日志出现 sht30 init failed 属正常；若已贴装，请进入「传感器」页面查看温湿度读数。'},
+  {id:'ble',name:'BLE 蓝牙键盘',auto:false,
+   desc:'手机/电脑蓝牙搜索「Super Knob pro」配对后，进入键盘页面测试媒体键与 Ctrl+C/V 快捷键。'},
+];
+function buildTestList(){
+  const box=$('#testList');box.innerHTML='';
+  TESTS.forEach(t=>{
+    const div=document.createElement('div');div.className='test';div.id='test-'+t.id;
+    div.innerHTML=`<div class="hd"><b>${t.name}</b><span class="pill" id="pill-${t.id}">待检</span></div>
+      <div class="bd">${t.desc}</div><div class="ev" id="ev-${t.id}"></div><div class="act" id="act-${t.id}"></div>`;
+    box.appendChild(div);
+    const act=div.querySelector('.act');
+    if(t.auto){const b=document.createElement('button');b.className='btn';b.textContent='单独运行';b.onclick=()=>runOneTest(t);act.appendChild(b)}
+    if(!t.auto||t.id==='screen'||t.id==='encoder'||t.id==='ble'||t.id==='touch'){
+      const c=document.createElement('button');c.className='btn';c.textContent='✓ 确认正常';
+      c.onclick=()=>setTestResult(t.id,'pass','人工目视确认正常');act.appendChild(c);
+      const x=document.createElement('button');x.className='btn';x.textContent='✗ 确认异常';
+      x.onclick=()=>setTestResult(t.id,'fail','人工确认异常');act.appendChild(x);
+    }
+  });
+}
+function setTestResult(id,status,note){
+  const pill=$('#pill-'+id);pill.className='pill '+status;
+  pill.textContent={pass:'✓ 通过',fail:'✗ 失败',manual:'⏳ 待人工',run:'运行中',idle:'待检',info:'ℹ 信息'}[status]||status;
+  if(note)$('#ev-'+id).textContent=note;
+  updateSelfSummary();
+}
+async function runOneTest(t){
+  setTestResult(t.id,'run');
+  try{
+    const[st,note]=await t.run();
+    setTestResult(t.id,st,note);
+  }catch(e){setTestResult(t.id,'fail','执行出错: '+e.message)}
+}
+$('#btnSelfAll').onclick=async()=>{
+  $('#btnSelfAll').disabled=true;
+  for(const t of TESTS.slice(0,5)){if(!S.connected)break;await runOneTest(t)}
+  updateSelfSummary();
+  $('#btnSelfAll').disabled=false;
+};
+function updateSelfSummary(){
+  const pills=TESTS.map(t=>$('#pill-'+t.id).className);
+  const pass=pills.filter(c=>c.includes('pass')).length;
+  const fail=pills.filter(c=>c.includes('fail')).length;
+  const manual=pills.filter(c=>c.includes('manual')).length;
+  $('#selfSummary').textContent=`通过 ${pass} ｜ 失败 ${fail} ｜ 待人工 ${manual} ｜ 未检 ${TESTS.length-pass-fail-manual}`;
+}
+buildTestList();
+
+/* ================= ③ 控制面板 ================= */
+const waveChart=$('#waveChart');const waveCtx=waveChart.getContext('2d');
+let sentTrace=[],echoTrace=[];
+function drawWave(){
+  const w=waveChart.width,h=waveChart.height,c=waveCtx;
+  c.clearRect(0,0,w,h);
+  c.strokeStyle='#1f2b38';for(let i=1;i<4;i++){c.beginPath();c.moveTo(0,h*i/4);c.lineTo(w,h*i/4);c.stroke()}
+  if(!sentTrace.length)return;
+  const plot=(arr,color)=>{
+    c.strokeStyle=color;c.lineWidth=1.5;c.beginPath();
+    const step=w/Math.max(arr.length-1,1);
+    arr.forEach((v,i)=>{const x=i*step,y=h-(v/100)*(h-16)-8;i?c.lineTo(x,y):c.moveTo(x,y)});
+    c.stroke();
+  };
+  plot(echoTrace,'#3ddc84');plot(sentTrace,'#4cc2ff');
+  c.fillStyle='#4a5b6d';c.font='11px monospace';
+  c.fillText('— 蓝色:发送值  绿色:设备回显值',8,14);
+}
+let liveTimer=null;
+function sendCpuMem(cpu,mem){
+  return sendPing(cpu,{timeout:1000,mem});
+}
+on('ping-ok',d=>{
+  sentTrace.push(d.cpu);echoTrace.push(d.cpu);
+  if(sentTrace.length>240){sentTrace.shift();echoTrace.shift()}
+  if(S.waveRunning||$('#liveFollow').checked)drawWave();
+});
+$('#cpuSlider').oninput=()=>{$('#cpuVal').textContent=(+$('#cpuSlider').value).toFixed(1);
+  if($('#liveFollow').checked)throttledSend()};
+$('#memSlider').oninput=()=>{$('#memVal').textContent=(+$('#memSlider').value).toFixed(1);
+  if($('#liveFollow').checked)throttledSend()};
+let lastSend=0;
+function throttledSend(){
+  const t=performance.now();
+  if(t-lastSend<100)return;
+  lastSend=t;
+  sendCpuMem(+$('#cpuSlider').value,+$('#memSlider').value);
+}
+$('#btnSendOnce').onclick=()=>sendCpuMem(+$('#cpuSlider').value,+$('#memSlider').value);
+$('#btnWave').onclick=startWave;
+$('#btnWaveStop').onclick=()=>{S.waveRunning=false;$('#btnWaveStop').disabled=true};
+async function startWave(){
+  if(S.waveRunning)return;
+  S.waveRunning=true;$('#btnWaveStop').disabled=false;
+  sentTrace=[];echoTrace=[];drawWave();
+  const type=$('#waveType').value,hz=+$('#waveHz').value,syncMem=$('#waveSyncMotor').checked;
+  const t0=performance.now();
+  log('SYS',`▶ 波形注入开始：${$('#waveType').selectedOptions[0].text} @ ${hz}Hz`);
+  while(S.waveRunning&&S.connected){
+    const t=(performance.now()-t0)/1000*hz;
+    let v;
+    if(type==='sine')v=(Math.sin(t*Math.PI*2)*0.5+0.5)*100;
+    else if(type==='tri'){const p=t%1;v=(p<0.5?p*2:2-p*2)*100}
+    else v=Math.random()*100;
+    $('#cpuSlider').value=v;$('#cpuVal').textContent=v.toFixed(1);
+    await sendCpuMem(v,syncMem?v*0.8+10:+$('#memSlider').value);
+    await sleep(Math.max(50,1000/(hz*20)));
+  }
+  log('SYS','■ 波形注入已停止');
+  $('#btnWaveStop').disabled=true;
+}
+$('#btnBadJson').onclick=()=>{
+  write('{bad json test\n');
+  log('SYS','已发送非法 JSON：固件会回显 deserializeJson() failed，同时接收缓冲失步——测试完必须复位设备恢复');
+};
+$('#btnRecoverBadJson').onclick=async()=>{
+  log('SYS','复位设备，恢复串口接收缓冲…');
+  await captureBootLog(2500,true);
+  S.wedged=false;updateButtons();
+  log('SYS',S.sawLogo?'✓ 已恢复到正常固件，串口可用':'⚠ 未捕获到 logo，请检查启动日志');
+};
+on('parse-error',line=>{
+  const box=$('#eventFeed');
+  box.innerHTML+=`<div><span class="t">${nowStr()}</span> <span class="ERR">[固件报错]</span> ${escapeHtml(line)}<br><span class="SYS">⚠ 串口已进入失步状态，所有后续指令将失效——请点上方「复位设备（必须）」恢复</span></div>`;
+  box.scrollTop=box.scrollHeight;
+  setBadge('red','● 串口失步，需复位');
+});
+on('event',ev=>{
+  const box=$('#eventFeed');
+  box.innerHTML+=`<div><span class="t">${ev.t}</span> <span class="EVT">[${ev.src}#${ev.id}]</span> ${ev.label}</div>`;
+  while(box.children.length>60)box.removeChild(box.firstChild);
+  box.scrollTop=box.scrollHeight;
+});
+
+/* ---- 电机远程控制 ---- */
+const MOTOR_MODE_NAME={0:'触觉(正常)',1:'保持角度',2:'连续旋转',3:'往复摆动',4:'跳档位'};
+let mtPoll=null;
+function sendMotorCmd(obj,desc){
+  if(!S.connected){log('SYS','请先连接设备');return}
+  write(JSON.stringify(obj)+'\n');
+  log('SYS',`→ 电机指令：${desc}`);
+}
+function startMtPoll(){
+  if(mtPoll)return;
+  mtPoll=setInterval(()=>{
+    if(!S.connected){stopMtPoll();return}
+    write(JSON.stringify({t:'sys',cmd:'status'})+'\n');
+  },500);
+}
+function stopMtPoll(){if(mtPoll){clearInterval(mtPoll);mtPoll=null}}
+// 设备回复的 JSON 行（pong/status/ack）统一在这里处理
+let ackState={};
+on('line',line=>{
+  if(!line.startsWith('{'))return;
+  let d;try{d=JSON.parse(line)}catch(e){return}
+  if(d.t==='status'){
+    $('#mtMode').textContent=MOTOR_MODE_NAME[d.mode]??('模式'+d.mode);
+    $('#mtTarget').textContent=(+d.angle).toFixed(2);
+    $('#mtVel').textContent=(+d.velocity).toFixed(2);
+    const pill=$('#motorPill');
+    if(d.remote){pill.className='pill run';pill.textContent='● 电机已被接管'}
+    else{pill.className='pill';pill.textContent='未接管'}
+    if(d.servo!=null)setServoUi(!!d.servo);        // 设备侧回报的转速伺服开关状态
+  }else if(d.t==='pong'){
+    log('SYS','← 设备指令通道正常（pong）');
+  }
+});
+$('#btnRotCw').onclick=()=>{const v=+$('#mtSpeed').value;sendMotorCmd({t:'motor',cmd:'rotate',speed:v,dir:1},`顺时针 ${v} rad/s`);startMtPoll()};
+$('#btnRotCcw').onclick=()=>{const v=+$('#mtSpeed').value;sendMotorCmd({t:'motor',cmd:'rotate',speed:v,dir:-1},`逆时针 ${v} rad/s`);startMtPoll()};
+$('#btnSweep').onclick=()=>{const r=+$('#mtRange').value,s=+$('#mtSweepSpd').value;sendMotorCmd({t:'motor',cmd:'sweep',range:r,speed:s},`往复摆动 幅度${r}rad 速度${s}rad/s`);startMtPoll()};
+$('#btnHold').onclick=()=>{const a=+$('#mtAngle').value;sendMotorCmd({t:'motor',cmd:'hold',angle:a},`保持到 ${a} rad`);startMtPoll()};
+$('#btnStep').onclick=()=>{const p=+$('#mtStepPos').value;sendMotorCmd({t:'motor',cmd:'step',pos:p},`跳到第 ${p} 档`);startMtPoll()};
+$('#btnRelease').onclick=()=>{sendMotorCmd({t:'motor',cmd:'release'},'释放电机，恢复正常触觉');setTimeout(()=>{stopMtPoll();$('#motorPill').className='pill';$('#motorPill').textContent='未接管'},300)};
+
+/* ---- 触觉模式（电机手感） ---- */
+// 触觉模式号与名称的映射（设备 haptic 字段回传的数字模式号，顺序即模式号）
+const HAPTIC_MODE_LIST=['detent','spring','viscous','oneway','endstop','free'];
+const HAPTIC_MODE_NAME={0:'档位/棘轮',1:'弹簧回中',2:'粘滞搅拌',3:'单向棘轮',4:'离心限位',5:'自由飞轮'};
+// 各模式的手感描述，显示在触觉卡片里
+const HAPTIC_FEEL={
+  detent:'一格一格的机械档位感',
+  spring:'越转越重，松手回中，像弹簧',
+  viscous:'阻尼随转速增大，停下即静止',
+  oneway:'只能正转，反转被强力顶住',
+  endstop:'范围内自由，两端硬限位墙',
+  free:'拨一下转好几圈，几乎无阻尼',
+};
+let hapMode=null;                       // 当前模式（字符串或数字，null=未知）
+function markHapticMode(mode,feel){
+  hapMode=mode;
+  // 模式既可能是字符串（页面点击的），也可能是数字（设备回传的模式号）
+  const name=typeof mode==='number'?(HAPTIC_MODE_NAME[mode]??'模式'+mode):mode;
+  const pill=$('#hapPill');
+  pill.className='pill run';
+  pill.textContent='● '+name;
+  $('#hapDesc').textContent='当前手感：'+(feel??HAPTIC_FEEL[mode]??HAPTIC_FEEL[HAPTIC_MODE_LIST[mode]]??'—');
+}
+function sendHaptic(obj,desc){
+  if(!S.connected){log('SYS','请先连接设备');return false}
+  write(JSON.stringify(obj)+'\n');
+  log('SYS','→ 触觉指令：'+desc);
+  return true;
+}
+function setHapticMode(mode,feel,extra){
+  if(!sendHaptic(Object.assign({t:'haptic',cmd:'set',mode},extra||{}),`切换触觉模式 → ${HAPTIC_FEEL[mode]}`))return;
+  markHapticMode(mode,feel);
+}
+$('#btnHapDetent').onclick =()=>setHapticMode('detent');
+$('#btnHapSpring').onclick =()=>setHapticMode('spring');
+$('#btnHapViscous').onclick=()=>setHapticMode('viscous');
+$('#btnHapOneway').onclick =()=>setHapticMode('oneway');
+$('#btnHapEndstop').onclick=()=>{
+  const r=+$('#mtEndRange').value||3.0;
+  setHapticMode('endstop',HAPTIC_FEEL.endstop+`（限位半宽 ${r} rad，两端共 ±${r} rad）`,{range:r});
+};
+$('#btnHapFree').onclick=()=>setHapticMode('free');
+function setPosReport(enable,silent){
+  if(!sendHaptic({t:'haptic',cmd:'report',enable:!!enable,interval:50},
+    enable?'开启位置感知上报（50ms/次）':'关闭位置感知上报'))return;
+  if(!enable){
+    clearTimeout(posStaleTimer);
+    posTrace=[];posVelTrace=[];drawPos();
+    posLastRaw=null;posUnwrapped=0;      // 复位累计圈数基准
+    setPosPill(false);
+  }
+}
+$('#chkPosReport').onchange=()=>setPosReport($('#chkPosReport').checked);
+// 连接成功后，若勾选了位置感知上报则自动开启一次
+function autoEnablePosReport(){
+  if(!S.connected||!$('#chkPosReport').checked)return;
+  sendHaptic({t:'haptic',cmd:'report',enable:true,interval:50},'自动开启位置感知上报（连接后）');
+}
+
+/* ---- 转速伺服（velservo）：闭环维持目标转速，可正反转 ---- */
+// 伺服与触觉模式共用 haptic 指令通道；这里单独记录运行状态与当前方向
+const SERVO={on:false,dir:1,lastSend:0};
+const SERVO_MIN=0.5,SERVO_MAXV=20;                 // 目标转速输入范围（rad/s）
+function servoClamp(v){return Math.max(SERVO_MIN,Math.min(SERVO_MAXV,Number.isFinite(+v)?+v:3))}
+function servoSpeed(){return servoClamp(+$('#servoSpeed').value)}
+function servoMax(){return Math.max(1,Math.min(SERVO_MAXV,Math.round(+$('#servoMax').value)||15))}
+function setServoUi(on){
+  SERVO.on=!!on;
+  const pill=$('#servoPill');
+  pill.className=on?'pill run':'pill';
+  pill.textContent=on?'● 转速伺服运行中':'未启用';
+  // 运行中时两个方向按钮变成「切换方向」，停止后恢复为「启动」语义
+  $('#btnServoCw').textContent =on?'↻ 切换到正转':'↻ 启动正转';
+  $('#btnServoCcw').textContent=on?'↺ 切换到反转':'↺ 启动反转';
+}
+function sendServo(obj,desc){
+  if(!S.connected){log('SYS','请先连接设备');return false}
+  write(JSON.stringify(Object.assign({t:'haptic',cmd:'velservo'},obj))+'\n');
+  log('SYS','→ 转速伺服指令：'+desc);
+  return true;
+}
+function servoStart(dir){
+  const v=servoSpeed();
+  if(!sendServo({enable:true,speed:+(dir*v).toFixed(2),max:servoMax()},
+    `${dir>0?'正转':'反转'} ${v.toFixed(1)} rad/s（安全限速 ${servoMax()} rad/s）`))return;
+  SERVO.dir=dir;
+  setServoUi(true);
+}
+function servoTune(){
+  if(!SERVO.on||!S.connected)return;
+  const v=servoSpeed(),t=performance.now();
+  if(t-SERVO.lastSend<200)return;                  // 200ms 节流，拖动滑块时不刷爆串口
+  SERVO.lastSend=t;
+  sendServo({enable:true,speed:+(SERVO.dir*v).toFixed(2),max:servoMax()},
+    `调速 → ${SERVO.dir>0?'+':''}${v.toFixed(1)} rad/s`);
+}
+$('#btnServoCw').onclick =()=>servoStart(1);
+$('#btnServoCcw').onclick=()=>servoStart(-1);
+$('#btnServoStop').onclick=()=>{
+  if(!sendServo({enable:false},'■ 停止转速伺服'))return;
+  setServoUi(false);
+};
+// 目标转速数字框与实时调速滑块双向联动
+function servoSyncInputs(v){
+  $('#servoSpeed').value=v;
+  $('#servoLiveSpeed').value=v;
+}
+$('#servoSpeed').oninput=()=>servoSyncInputs(servoClamp(+$('#servoSpeed').value));
+$('#servoLiveSpeed').oninput=()=>{
+  servoSyncInputs(servoClamp(+$('#servoLiveSpeed').value));
+  servoTune();
+};
+setServoUi(false);
+
+/* ---- 位置感知上报 {"t":"pos",...} ---- */
+const posChart=$('#posChart');const posCtx=posChart.getContext('2d');
+let posTrace=[],posVelTrace=[],posStaleTimer=null;
+// 固件上报的 shaft_angle 在 0~2π 圈内回绕，需要在页面侧解缠绕才能得到真实累计圈数
+let posLastRaw=null,posUnwrapped=0;
+function setPosPill(alive){
+  const p=$('#posPill');
+  p.className=alive?'pill pass':'pill';
+  p.textContent=alive?'● 位置数据在线':'● 无位置数据';
+}
+function drawPos(){
+  const w=posChart.width,h=posChart.height,c=posCtx;
+  c.clearRect(0,0,w,h);
+  c.strokeStyle='#1f2b38';c.lineWidth=1;
+  for(let i=1;i<4;i++){c.beginPath();c.moveTo(0,h*i/4);c.lineTo(w,h*i/4);c.stroke()}
+  const n=posTrace.length;if(!n)return;
+  const step=w/Math.max(n-1,1);
+  const maxA=Math.max(20,...posTrace.map(a=>Math.abs(a)))*1.15;   // 角度量程（度），至少 ±20°
+  const maxV=Math.max(1,...posVelTrace.map(v=>Math.abs(v)))*1.15; // 速度量程（rad/s）
+  const plot=(arr,color,scale)=>{
+    if(arr.length<2)return;
+    c.strokeStyle=color;c.lineWidth=1.5;c.beginPath();
+    arr.forEach((v,i)=>{const x=i*step,y=h-(v/scale)*(h-16)-8;i?c.lineTo(x,y):c.moveTo(x,y)});
+    c.stroke();
+  };
+  plot(posTrace,'#4cc2ff',maxA);
+  plot(posVelTrace,'#ffb74d',maxV);
+  c.fillStyle='#4a5b6d';c.font='11px monospace';
+  c.fillText('+'+maxA.toFixed(0)+'°',4,12);c.fillText('-'+maxA.toFixed(0)+'°',4,h-4);
+  c.fillText('蓝:角度  橙:速度 ±'+maxV.toFixed(1)+' rad/s',8,14);
+}
+on('line',line=>{
+  if(!line.startsWith('{')||!line.includes('"pos"'))return;
+  let d;try{d=JSON.parse(line)}catch(e){return}
+  if(!d||d.t!=='pos')return;
+  const deg=(+d.angle||0)*180/Math.PI, vel=+d.velocity||0;
+  // 角度解缠绕：跨越 ±π 的跳变视为跨圈，累加到累计角
+  const raw=+d.angle||0;
+  if(posLastRaw!==null){
+    let dlt=raw-posLastRaw;
+    if(dlt>Math.PI)dlt-=2*Math.PI;
+    if(dlt<-Math.PI)dlt+=2*Math.PI;
+    posUnwrapped+=dlt;
+  }
+  posLastRaw=raw;
+  posTrace.push(deg);posVelTrace.push(vel);
+  if(posTrace.length>240){posTrace.shift();posVelTrace.shift()}
+  $('#posAngleDeg').textContent=deg.toFixed(0);
+  $('#posCount').textContent=(posUnwrapped/(2*Math.PI)).toFixed(2);
+  $('#posVel').textContent=vel.toFixed(2);
+  $('#servoActual').textContent=(vel>=0?'+':'')+vel.toFixed(2);   // 转速伺服卡片的实际转速
+  $('#posDetent').textContent=d.position??'—';
+  $('#posDir').textContent=vel>0.05?'↑ 正转':vel<-0.05?'↓ 反转':'— 静止';
+  $('#posDir').className='pill '+(vel>0.05?'run':vel<-0.05?'manual':'');
+  if(d.haptic!=null&&d.haptic!==hapMode)markHapticMode(d.haptic);   // 设备侧模式变化时同步显示
+  setPosPill(true);
+  drawPos();
+  clearTimeout(posStaleTimer);
+  posStaleTimer=setTimeout(()=>setPosPill(false),3000);   // 3 秒无报文 → 无位置数据
+});
+drawPos();
+
+/* ---- 屏幕诊断 ---- */
+const DISP_RE=/^\[DISP\]/;
+on('line',line=>{
+  if(!DISP_RE.test(line))return;
+  const box=$('#dispLog');box.style.display='block';
+  box.innerHTML+=line+'\n';
+  while(box.innerHTML.split('\n').length>20)box.innerHTML=box.innerHTML.split('\n').slice(1).join('\n');
+  box.scrollTop=box.scrollHeight;
+});
+$('#btnDispDiag').onclick=()=>{
+  if(!S.connected)return;
+  $('#dispLog').style.display='block';
+  write(JSON.stringify({t:'sys',cmd:'display_diag'})+'\n');
+  log('SYS','→ 请求屏幕面板回读诊断');
+};
+$('#btnDispTest').onclick=()=>{
+  if(!S.connected)return;
+  write(JSON.stringify({t:'sys',cmd:'display_test',mode:'start'})+'\n');
+  log('SYS','→ 纯色刷屏自检开始（红/绿/蓝/白 每800ms），请观察设备屏幕');
+};
+$('#btnDispTestStop').onclick=()=>{
+  if(!S.connected)return;
+  write(JSON.stringify({t:'sys',cmd:'display_test',mode:'stop'})+'\n');
+  log('SYS','→ 纯色自检停止，LVGL 渲染已恢复');
+};
+
+/* ---- 电脑实时资源监控（本地采集服务） ---- */
+const SVC_URL = location.protocol.startsWith('http') ? location.origin : 'http://127.0.0.1:8123';
+const pcChart=$('#pcChart');const pcCtx=pcChart.getContext('2d');
+let pcTimer=null, pcTrace={cpu:[],mem:[]}, pcPush={ok:0,fail:0};
+function drawPc(){
+  const w=pcChart.width,h=pcChart.height,c=pcCtx;
+  c.clearRect(0,0,w,h);
+  c.strokeStyle='#1f2b38';for(let i=1;i<4;i++){c.beginPath();c.moveTo(0,h*i/4);c.lineTo(w,h*i/4);c.stroke()}
+  c.fillStyle='#4a5b6d';c.font='11px monospace';
+  c.fillText('100%',4,12);c.fillText('0%',4,h-4);
+  const plot=(arr,color)=>{
+    if(arr.length<2)return;
+    c.strokeStyle=color;c.lineWidth=1.5;c.beginPath();
+    const step=w/Math.max(arr.length-1,1);
+    arr.forEach((v,i)=>{const x=i*step,y=h-(v/100)*(h-16)-8;i?c.lineTo(x,y):c.moveTo(x,y)});
+    c.stroke();
+  };
+  plot(pcTrace.mem,'#ffb74d');plot(pcTrace.cpu,'#4cc2ff');
+  c.fillText('— CPU  — 内存',8,14);
+}
+async function probeSvc(silent){
+  try{
+    const r=await fetch(SVC_URL+'/api/stats',{cache:'no-store'});
+    if(!r.ok)throw new Error('HTTP '+r.status);
+    const s=await r.json();
+    $('#svcPill').className='pill pass';$('#svcPill').textContent='● 服务在线';
+    $('#svcInfo').innerHTML=`${s.host} · ${s.cores} 核 · 内存 ${s.memUsedGB}/${s.memTotalGB} GB`;
+    return s;
+  }catch(e){
+    $('#svcPill').className='pill fail';$('#svcPill').textContent='● 服务离线';
+    if(!silent)$('#svcInfo').innerHTML='请在项目目录运行 <code>node tools/knob_server.mjs</code>（默认端口 8123）';
+    return null;
+  }
+}
+$('#btnProbeSvc').onclick=()=>probeSvc();
+function stopPc(){
+  if(pcTimer){clearInterval(pcTimer);pcTimer=null}
+  $('#btnPushPc').disabled=false;$('#btnPushPcStop').disabled=true;
+}
+$('#btnPushPc').onclick=async()=>{
+  const s0=await probeSvc();
+  if(!s0)return;
+  if(!S.connected){log('SYS','请先在「① 连接测试」连接设备');return}
+  $('#btnPushPc').disabled=true;$('#btnPushPcStop').disabled=false;
+  pcTrace={cpu:[],mem:[]};pcPush={ok:0,fail:0};
+  log('SYS','▶ 开始推送电脑实时资源（1Hz）——请确认设备已停留在「电脑监测」页面');
+  let busy=false;
+  pcTimer=setInterval(async()=>{
+    if(busy)return;busy=true;
+    try{
+      const st=await probeSvc(true);
+      if(!st){log('SYS','✗ 采集服务失联，停止推送');stopPc();return}
+      if(!S.connected){log('SYS','✗ 设备已断开，停止推送');stopPc();return}
+      const cpu=Math.max(1,Math.min(100,st.cpu));      // 固件 cpu=0 会弹 please connect to pc
+      const mem=Math.max(1,Math.min(100,st.memory));
+      $('#pcCpu').textContent=st.cpu.toFixed(1);
+      $('#pcMem').textContent=st.memory.toFixed(1);
+      $('#pcPushCpu').textContent=cpu.toFixed(1);
+      $('#pcPushMem').textContent=mem.toFixed(1);
+      const ok=await sendPing(cpu,{timeout:2000,mem});
+      pcPush.ok+=ok?1:0;pcPush.fail+=ok?0:1;
+      $('#pcPushOk').textContent=`${pcPush.ok}/${pcPush.ok+pcPush.fail}`;
+      pcTrace.cpu.push(st.cpu);pcTrace.mem.push(st.memory);
+      if(pcTrace.cpu.length>120){pcTrace.cpu.shift();pcTrace.mem.shift()}
+      drawPc();
+    }finally{busy=false}
+  },1000);
+};
+$('#btnPushPcStop').onclick=()=>{stopPc();log('SYS','■ 已停止推送实时资源')};
+probeSvc(true);
+$('#btnDisconnect').onclick=async()=>{
+  if(!S.connected)return;
+  const dur=S.tConnect?((Date.now()-S.tConnect)/1000):0;
+  if($('#discReset').checked){
+    log('SYS','断开前复位设备…');
+    try{await hardReset()}catch(e){}
+    await sleep(400);
+  }
+  await closePort();
+  handleDisconnect('已主动断开连接');
+  $('#devInfo').textContent='';
+  const total=S.ping.ok+S.ping.fail;
+  const box=$('#discSummary');box.style.display='block';
+  box.textContent=
+`会话总结
+────────────────────
+连接时长     ${dur.toFixed(0)} 秒
+发送 / 接收  ${S.tx} B / ${S.rx} B
+Ping 校验    ${S.ping.ok} 通过 / ${total} 总计（${total?(S.ping.ok/total*100).toFixed(1):'—'}%）
+设备事件     ${S.events.length} 条
+复位次数     ${S.resets}
+固件解析错误 ${S.parseErrors} 次
+噪声数值行   ${S.noise} 条`;
+  log('SYS','会话已结束，可安全拔出设备');
+};
+
+/* ================= Tab 切换 & 会话统计刷新 ================= */
+function switchTab(id){
+  document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===id));
+  document.querySelectorAll('section.tab').forEach(s=>s.classList.toggle('on',s.id===id));
+}
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));
+setInterval(()=>{
+  if(!S.connected||!S.tConnect)return;
+  const s=(Date.now()-S.tConnect)/1000;
+  $('#sDur').textContent=`${Math.floor(s/60)}分${Math.floor(s%60)}秒`;
+  $('#sTx').textContent=S.tx;$('#sRx').textContent=S.rx;
+  $('#sPing').textContent=`${S.ping.ok}/${S.ping.ok+S.ping.fail}`;
+  $('#sEvt').textContent=S.events.length;
+  $('#sReset').textContent=S.resets;
+  $('#sErr').textContent=S.parseErrors;
+},1000);
+updateButtons();
+</script>
+</body>
+</html>

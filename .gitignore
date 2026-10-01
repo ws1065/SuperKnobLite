@@ -1,0 +1,23 @@
+# ===== PlatformIO 构建产物 =====
+.pio/
+.pioenvs/
+.piolibdeps/
+# PlatformIO / 编辑器本地配置
+.vscode/
+.idea/
+
+# ===== PC 端 PyInstaller 打包产物（140MB Windows DLL/EXE，无源码）=====
+main/
+
+# ===== 硬件设计二进制文件 =====
+# Altium PcbDoc/PcbLib 及 rar 归档合计 100MB+，为二进制且不适合版本管理。
+# 文件本身保留在本机，仅不入库。如需入库请删除下面一行。
+SuperKnobLite 二代旋钮电路图及pcb/
+
+# ===== 大体积安装包 =====
+*.zip
+*.rar
+
+# ===== 系统文件 =====
+.DS_Store
+Thumbs.db
