@@ -117,3 +117,19 @@ node tools/knob_server.mjs       # 采集服务 + 页面托管 → http://127.0.
 
 - [`docs/技术方案.md`](docs/技术方案.md) —— 本次功能扩展的完整技术方案（协议设计、FOC 控制架构、踩坑记录）
 - [`AGENTS.md`](AGENTS.md) —— 项目硬件、固件架构、烧录与开发环境说明
+- [`LICENSE-THIRD-PARTY.md`](LICENSE-THIRD-PARTY.md) —— 第三方组件许可与来源说明
+
+## 许可
+
+本项目采用 [MIT 许可](LICENSE) —— 允许自由使用、修改、分发、商用与私有化，
+唯一要求是保留版权声明与许可声明。
+
+```text
+Copyright (c) 2026 SuperKnobLite Contributors
+Copyright (c) 2022 NXP (gui_super_knob.h 中的部分界面代码)
+```
+
+本仓库包含的第三方组件（Simple FOC、lvgl、TFT_eSPI、ArduinoJson、
+ESP32 BLE Keyboard、Adafruit NeoPixel、PubSubClient 等）各自保留原有许可，
+均为 MIT / BSD / Apache-2.0 等宽松条款，不受本项目许可变更影响。
+详见 [LICENSE-THIRD-PARTY.md](LICENSE-THIRD-PARTY.md)。
